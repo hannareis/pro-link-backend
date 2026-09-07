@@ -1,0 +1,17 @@
+# Dependencias instaladas localmente (recriadas via composer install)
+/vendor/
+/node_modules/
+
+# Segredos e variaveis de ambiente reais (usar .env.example como modelo)
+.env
+
+# Artefatos gerados em tempo de execucao
+storage/logs/*.log
+storage/uploads/*
+!storage/uploads/.gitkeep
+!storage/uploads/arts_cats/.gitkeep
+.phpunit.result.cache
+
+# Arquivos de sistema operacional
+.DS_Store
+Thumbs.db

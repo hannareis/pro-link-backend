@@ -7,12 +7,14 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Repositories\CurtidaRepository;
 use App\Repositories\PostRepository;
+use App\Models\Post;
+use DateTime;
 
 class PostController
 {
     public function __construct(
         private readonly CurtidaRepository $curtidaRepository = new CurtidaRepository(),
-        private readonly PostRepository $postRepository = new postRepository()
+        private readonly PostRepository $postRepository = new PostRepository()
     ) {
     }
         
@@ -38,6 +40,27 @@ class PostController
     public function deleteAttachment(Request $request): void
     {
 
+    }
+
+    public function store(Request $request): void
+    {
+        $user = $request->user();
+        $userId = (int) $request->user()['id'];
+
+        $titulo = (string) $request->input('titulo', '');
+        $conteudo = (string) $request->input('conteudo', '');
+
+        $post = new Post(
+            id: 0,
+            userId: $userId,
+            dataDePostagem: new DateTime(),
+            conteudo: $conteudo,
+            titulo: $titulo
+        );
+
+        $this->postRepository->save($post);
+
+        //TODO header();
     }
 
 }

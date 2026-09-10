@@ -49,13 +49,15 @@ class PostController
 
         $titulo = (string) $request->input('titulo', '');
         $conteudo = (string) $request->input('conteudo', '');
+        $statusPost = (string) $request->input('status', '');
 
         $post = new Post(
-            id: 0,
+            id: null,
             userId: $userId,
             dataDePostagem: new DateTime(),
             conteudo: $conteudo,
-            titulo: $titulo
+            titulo: $titulo,
+            status: $statusPost
         );
 
         $this->postRepository->save($post);

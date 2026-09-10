@@ -9,6 +9,7 @@ use App\Controllers\DemandaController;
 use App\Controllers\FeedController;
 use App\Controllers\PortfolioController;
 use App\Controllers\UserController;
+use App\Controllers\PostController;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\CsrfMiddleware;
 use App\Middleware\RoleMiddleware;
@@ -42,6 +43,9 @@ $router->post('/demandas', [DemandaController::class, 'store'], [AuthMiddleware:
 // RF05 - fluxo de Cartas Virtuais: check-in (redige e valida) e check-out (envia por e-mail).
 $router->post('/cartas-virtuais/checkin', [CartaVirtualController::class, 'checkin'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/cartas-virtuais/{id}/checkout', [CartaVirtualController::class, 'checkout'], [AuthMiddleware::class, CsrfMiddleware::class]);
+
+// RF05 - comunicação inicial entre empresas, instituições e profissionais através da criação de posts.
+$router->post('/posts', [PostController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
 // RF06 - painel administrativo, restrito ao perfil admin via RoleMiddleware.
 $router->get('/admin', [AdminController::class, 'dashboard'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN])]);

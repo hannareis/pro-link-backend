@@ -10,10 +10,10 @@ use DateTime;
 class Post extends Publicavel
 {
     public function __construct(
-        int $id, int $userId, DateTime $dataDePostagem, string $conteudo,
+        ?int $id, int $userId, DateTime $dataDePostagem, string $conteudo, string $status,
         public string $titulo = "",
         public array $anexos = [],
     ) {
-        parent::__construct($id, $userId, $dataDePostagem, $conteudo);
+        parent::__construct($id, $userId, $dataDePostagem, $conteudo, $status);
     }
 }

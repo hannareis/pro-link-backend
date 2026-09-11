@@ -4,30 +4,45 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-// RF01 - usuario da plataforma, em um dos 6 perfis previstos no edital.
+// Tabela `usuarios` do estrutura.sql: a conta de acesso (login), especializada
+// por `pessoa_fisica` ou `pessoa_juridica` conforme `tipo_pessoa`.
 class User
 {
-    // Os 6 perfis definidos na proposta (item 5.1).
-    public const PERFIL_PUBLICO = 'publico';
-    public const PERFIL_EMPRESA = 'empresa';
-    public const PERFIL_PROFISSIONAL = 'profissional';
-    public const PERFIL_UNIVERSITARIO = 'universitario';
-    public const PERFIL_TERCEIRO = 'terceiro';
-    public const PERFIL_ADMIN = 'admin';
+    // Coluna `tipo_pessoa`.
+    public const TIPO_PESSOA_FISICA = 'FISICA';
+    public const TIPO_PESSOA_JURIDICA = 'JURIDICA';
 
-    // Exclusao logica: 'A' (ativo) ou 'X' (excluido, preserva auditoria).
-    public const STATUS_ATIVO = 'A';
-    public const STATUS_EXCLUIDO = 'X';
+    // Coluna `perfil_acesso`.
+    public const PERFIL_USUARIO = 'USUARIO';
+    public const PERFIL_ADMIN_CREA = 'ADMIN_CREA';
+    // Alias retrocompativel com rotas/middleware que ainda usam PERFIL_ADMIN.
+    public const PERFIL_ADMIN = self::PERFIL_ADMIN_CREA;
 
     public function __construct(
         public ?int $id = null,
         public string $nome = '',
         public string $email = '',
         public string $senhaHash = '',
-        public string $perfil = self::PERFIL_PUBLICO,
-        // Concedido apos validacao positiva na API do CREA-AM (RF01/RF02).
-        public bool $seloVerificacao = false,
-        public string $status = self::STATUS_ATIVO,
+        public string $telefone = '',
+        public string $tipoPessoa = self::TIPO_PESSOA_FISICA,
+        public string $perfilAcesso = self::PERFIL_USUARIO,
+        public bool $contaAtiva = true,
+        public ?string $ultimoLoginEm = null,
+        public int $tentativasLogin = 0,
+        public ?string $bloqueadoAte = null,
+        public ?string $criadoEm = null,
+        public ?string $atualizadoEm = null,
     ) {
+    }
+
+    // Conta temporariamente bloqueada por excesso de tentativas de login.
+    public function estaBloqueado(): bool
+    {
+        return $this->bloqueadoAte !== null && strtotime($this->bloqueadoAte) > time();
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->perfilAcesso === self::PERFIL_ADMIN_CREA;
     }
 }

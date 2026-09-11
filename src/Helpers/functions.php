@@ -16,6 +16,22 @@ if (!function_exists('csrf_token')) {
     }
 }
 
+// Retorna o array do usuario autenticado na sessao, ou null se nao houver login.
+if (!function_exists('auth_user')) {
+    function auth_user(): ?array
+    {
+        return $_SESSION['user'] ?? null;
+    }
+}
+
+// Retorna o id do usuario autenticado, ou 0 quando nao ha sessao.
+if (!function_exists('auth_id')) {
+    function auth_id(): int
+    {
+        return (int) ($_SESSION['user']['id'] ?? 0);
+    }
+}
+
 // Le uma chave de configuracao no formato "secao.opcao" (ex: "app.name"), a
 // partir do _config.php da raiz (Anexo I, item 8.3.1), carregado uma unica
 // vez por requisicao.

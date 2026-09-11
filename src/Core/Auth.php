@@ -41,7 +41,9 @@ class Auth
             'id' => $user->id,
             'nome' => $user->nome,
             'email' => $user->email,
-            'perfil' => $user->perfil,
+            // Mantem a chave 'perfil' na sessao (lida por RoleMiddleware); valor
+            // vem da coluna `perfil_acesso` do estrutura.sql.
+            'perfil' => $user->perfilAcesso,
         ];
         session_regenerate_id(true);
     }

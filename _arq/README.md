@@ -23,7 +23,7 @@ executado automaticamente na primeira subida do container `mariadb`.
 ```bash
 cp .env.example .env
 composer install
-mysql -u root -p prolink < _arq/estrutura.sql
+mysql -u root -p < _arq/estrutura.sql   # o proprio script cria e usa o banco pro_link_db
 php -S localhost:8080 -t public
 ```
 

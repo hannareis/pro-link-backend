@@ -19,6 +19,7 @@ abstract class Publicavel
         public ?int $id = null,
         public ?int $userId = null,
         public ?DateTime $dataDePostagem = null,
+        public ?DateTime $dataEdicao = null,
         public string $conteudo = "",
         public string $status = self::STATUS_PUBLICO
     ) {  

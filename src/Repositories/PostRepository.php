@@ -35,7 +35,7 @@ class PostRepository
 
         $stmt = $pdo->prepare
         (
-            'UPDATE posts SET titulo = :titulo, conteudo = :conteudo,status_post = :statusPost WHERE id = :id'
+            'UPDATE posts SET titulo = :titulo, conteudo = :conteudo, status_post = :statusPost WHERE id = :id'
         );
         $stmt->execute
         (
@@ -49,16 +49,46 @@ class PostRepository
         return $post->id;
     }
 
-    public function convertDatabaseToObject(array $row): Post
+    public function findById(int $id): ?Post
+    {
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare
+        (
+            'SELECT * FROM posts WHERE id = :id'
+        );
+        $stmt->execute(['id' => $id]);
+        $row = $stmt->fetch();
+        return $row ? $this->hydrate($row) : null;
+    }
+
+    public function delete(?Post $post): bool
+    {
+        if ($post === null) return false;
+
+        $pdo = Database::connection();
+
+        $stmt = $pdo->prepare
+        (
+            'DELETE FROM posts WHERE id = :id'
+        );
+        $stmt->execute(['id' => $post->id]);
+
+        return $stmt->rowCount() > 0;
+    }
+    
+    public function hydrate(array $row): Post
     {
         return new Post(
             id: (int) $row['id'],
             userId: (int) $row['id_autor'],
             dataDePostagem: new DateTime($row['data_postagem']),
+            dataEdicao: new DateTime($row['atualizado_em']),
             conteudo: $row['conteudo'],
             titulo: $row['titulo'] ?? '',
             anexos: [],
             status: (string) $row['status_post']
         );
     }
+    
 }

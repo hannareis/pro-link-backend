@@ -1,70 +1,90 @@
 <?php
 
-declare(strict_types= 1);
+declare(strict_types=1);
 
 namespace App\Controllers;
 
 use App\Core\Request;
+use App\Core\Response;
 use App\Models\Comentario;
 use App\Repositories\ComentarioRepository;
-use App\Services\NotificacaoService;
-use App\Core\Response;
 
-use DateTime;
-
+// RF05 - comentarios em posts e respostas a outros comentarios.
+// Refatorado com assistência de Inteligência Artificial para alinhamento aos padrões arquiteturais do projeto.
 class ComentarioController
 {
     public function __construct(
-        private readonly NotificacaoService $notificacaoService = new NotificacaoService(),
         private readonly ComentarioRepository $comentarioRepository = new ComentarioRepository()
     ) {
     }
 
-    // Atrela o comentário ao Post/Comentário alvo
+    // [IA]: Implementação da consulta de comentários vinculados a um post com retorno em formato JSON.
+    public function index(Request $request): void
+    {
+        $idPost = (int) $request->input('id_post');
+
+        Response::json(['data' => $this->comentarioRepository->listById($idPost)]);
+    }
+
+    // [IA]: Implementação da busca de comentário por ID com validação de existência (404).
+    public function show(Request $request): void
+    {
+        $comentario = $this->comentarioRepository->findById((int) $request->input('id'));
+
+        if ($comentario === null) {
+            Response::json(['message' => 'Comentario nao encontrado.'], 404);
+            return;
+        }
+
+        Response::json(['data' => $comentario]);
+    }
+
+    // [IA]: Adequação para identificação do autor via auth_id() e emissão de resposta JSON com status 201.
     public function store(Request $request): void
     {
-        $userId = (int) $request->user()['id'];
+        $userId = auth_id();
 
-        $conteudo = (string) $request->input('conteudo', '');
-        $status = (string) $request->input('status', '');
-        $postId = (int) $request->input('id_post', '');
-        $comentarioPaiId = (int) $request->input('id_comentario');
-
-        $comentario = new Comentario
-        (
-            id: null,
+        $comentario = new Comentario(
             userId: $userId,
-            dataDePostagem: new DateTime(),
-            dataEdicao: new DateTime(),
-            conteudo: $conteudo,
-            status: $status,
-            postId: $postId,
-            comentarioPaiId: $comentarioPaiId
+            conteudo: (string) $request->input('conteudo', ''),
+            status: (string) $request->input('status', ''),
+            postId: (int) $request->input('id_post'),
+            comentarioPaiId: $request->input('id_comentario') !== null
+                ? (int) $request->input('id_comentario')
+                : null,
         );
 
         $id = $this->comentarioRepository->save($comentario);
 
-        Response::redirect("/posts/comentarios/$id");
-        return;
+        Response::json(['message' => 'Comentario criado.', 'id' => $id], 201);
     }
 
-    // Deleta o comentário do Post/Comentário alvo
-    public function delete(Request $request): bool
+    // [IA]: Adequação do fluxo de atualização com verificação prévia de registro e resposta em formato JSON.
+    public function update(Request $request): void
     {
-        $comentarioId = (int) $request->input('comentario_id', '');
+        $id = (int) $request->input('id');
 
-        return $this->comentarioRepository->delete($this->comentarioRepository->findById($comentarioId));
+        $comentario = $this->comentarioRepository->findById($id);
+
+        if ($comentario === null) {
+            Response::json(['message' => 'Comentario nao encontrado.'], 404);
+            return;
+        }
+
+        $comentario->conteudo = (string) $request->input('conteudo', $comentario->conteudo);
+        $comentario->status = (string) $request->input('status', $comentario->status);
+        $this->comentarioRepository->save($comentario);
+
+        Response::json(['message' => 'Comentario atualizado.']);
     }
 
-    // // Edita o comentário no Post/Comentário alvo
-    public function editComment(Request $request): void
+    // [IA]: Ajuste da assinatura para tipo void e envio de confirmação de exclusão em formato JSON.
+    public function destroy(Request $request): void
     {
-        $comentarioId = (int) $request->input('id_comentario', '');
+        $this->comentarioRepository->delete(
+            $this->comentarioRepository->findById((int) $request->input('id'))
+        );
 
-        $this->comentarioRepository->save($this->comentarioRepository->findById($comentarioId));
-
-        Response::redirect("/posts/comentarios/$comentarioId");
-        return;
-
+        Response::json(['message' => 'Comentario removido.']);
     }
 }

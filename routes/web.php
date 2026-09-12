@@ -58,7 +58,7 @@ $router->post('/cartas-virtuais/{id}/checkout', [CartaVirtualController::class, 
 
 // RF05 - comunicação inicial entre empresas, instituições e profissionais através da criação de posts.
 $router->post('/posts', [PostController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
-$router->post('/posts/edit', [PostController::class, 'postEdit'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/posts/edit', [PostController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/{id}/anexos', [PostAnexoController::class, 'store'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/{id}/like', [PostController::class, 'likePost'], [AuthMiddleware::class]);
 

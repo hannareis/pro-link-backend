@@ -1,85 +1,88 @@
 <?php
 
-declare(strict_types= 1);
+declare(strict_types=1);
 
 namespace App\Repositories;
 
-use App\Models\Curtida;
 use App\Core\Database;
-use DateTime;
+use App\Models\Curtida;
 
 class CurtidaPostRepository
 {
-    public function save(Curtida $curtida): int
+    public function findByUsuarioEPost(int $userId, int $postId): ?Curtida
     {
-        $pdo = Database::connection();
-
-        if ($curtida->userId === null || $curtida->publicavelId === null)
-            {
-                $stmt = $pdo->prepare
-                (
-                    'INSERT INTO likes_posts (id_usuario, id_post, data_curtida) VALUES (:userId, :publicavelId, :dataCurtida)'
-                );
-                $stmt->execute
-                (
-                    [
-                        'userId' => $curtida->userId,
-                        'publicavelId' => $curtida->publicavelId,
-                        'dataCurtida' => $curtida->data
-                    ]
-                );
-                return (int) $pdo->lastInsertId();
-            }
-            return $curtida->publicavelId;
-    }
-
-    public function findByUsuarioEPost(int $userId, int $publicavelId): ?Curtida
-    {
-        $pdo = Database::connection();
-
-        $stmt = $pdo->prepare
-        (
-            'SELECT * FROM likes_posts WHERE id_usuario = :userId AND id_post = :publicavelId'
+        $stmt = Database::connection()->prepare(
+            'SELECT * FROM likes_posts WHERE id_usuario = :userId AND id_post = :postId LIMIT 1'
         );
-        $stmt->execute
-        (
-            [
-                'userId' => $userId,
-                'publicavelId' => $publicavelId
-            ]
-        );
+        $stmt->execute([
+            'userId' => $userId,
+            'postId' => $postId,
+        ]);
         $row = $stmt->fetch();
 
         return $row ? $this->hydrate($row) : null;
     }
 
-    public function delete(?Curtida $curtida): bool
+    public function listByPost(int $postId): array
     {
-        if ($curtida === null) return false;
-
-        $pdo = Database::connection();
-
-        $stmt = $pdo->prepare
-        (
-            'DELETE FROM likes_posts WHERE id_usuario = :userId AND id_post = :postId'
+        $stmt = Database::connection()->prepare(
+            'SELECT * FROM likes_posts WHERE id_post = :postId ORDER BY data_curtida DESC'
         );
-        $stmt->execute
-        (
-            [
-                'userId' => $curtida->userId,
-                'postId' => $curtida->publicavelId
-            ]
-        );
-        return $stmt->rowCount() > 0;
+        $stmt->execute(['postId' => $postId]);
+
+        return array_map($this->hydrate(...), $stmt->fetchAll());
     }
 
-    public function hydrate(array $row): Curtida
+    public function listByUsuario(int $userId): array
     {
-        return new Curtida
-        (
+        $stmt = Database::connection()->prepare(
+            'SELECT * FROM likes_posts WHERE id_usuario = :userId ORDER BY data_curtida DESC'
+        );
+        $stmt->execute(['userId' => $userId]);
+
+        return array_map($this->hydrate(...), $stmt->fetchAll());
+    }
+
+    public function save(Curtida $curtida): int
+    {
+        if ($curtida->userId === null || $curtida->publicavelId === null) {
+            return 0;
+        }
+
+        $stmt = Database::connection()->prepare(
+            'INSERT IGNORE INTO likes_posts (id_usuario, id_post)
+             VALUES (:userId, :postId)'
+        );
+        $stmt->execute([
+            'userId' => $curtida->userId,
+            'postId' => $curtida->publicavelId,
+        ]);
+
+        return $curtida->publicavelId;
+    }
+
+    public function delete(?Curtida $curtida): bool
+    {
+        if ($curtida === null || $curtida->userId === null || $curtida->publicavelId === null) {
+            return false;
+        }
+
+        $stmt = Database::connection()->prepare(
+            'DELETE FROM likes_posts WHERE id_usuario = :userId AND id_post = :postId'
+        );
+
+        return $stmt->execute([
+            'userId' => $curtida->userId,
+            'postId' => $curtida->publicavelId,
+        ]);
+    }
+
+    private function hydrate(array $row): Curtida
+    {
+        return new Curtida(
             userId: (int) $row['id_usuario'],
             publicavelId: (int) $row['id_post'],
-            data: new DateTime($row['data_curtida'])
+            data: $row['data_curtida'] ?? null
         );
     }
 }

@@ -50,6 +50,9 @@ $router->post('/portfolio', [PortfolioController::class, 'store'], [AuthMiddlewa
 // RF04 - cadastro e listagem de demandas (aciona o NLP de recomendacao de area).
 $router->get('/demandas', [DemandaController::class, 'index'], [AuthMiddleware::class]);
 $router->post('/demandas', [DemandaController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->get('/demandas/{id}', [DemandaController::class, 'show'], [AuthMiddleware::class]);
+$router->post('/demandas/{id}/editar', [DemandaController::class, 'update'], [AuthMiddleware::class, SanitizeInput::class, CsrfMiddleware::class]);
+$router->post('/demandas/{id}/remover', [DemandaController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 
 // RF05 - fluxo de Cartas Virtuais: check-in (redige e valida) e check-out (envia por e-mail).
 $router->post('/cartas-virtuais/checkin', [CartaVirtualController::class, 'checkin'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);

@@ -4,8 +4,6 @@ declare(strict_types= 1);
 
 namespace App\Models;
 
-use DateTime;
-
 class Anexo
 {
     public const STATUS_PUBLICO = 'PUBLICO';
@@ -23,6 +21,6 @@ class Anexo
         public int $tamanho = 0,
         public string $caminhoArmazenamento = "",
         public string $hash = "",
-        public ?DateTime $dataUpload = null
+        public ?string $dataUpload = null
     ){}
 }

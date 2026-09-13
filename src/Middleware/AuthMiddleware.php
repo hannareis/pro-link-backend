@@ -10,11 +10,11 @@ use App\Core\Response;
 // Bloqueia rotas que exigem usuario autenticado.
 class AuthMiddleware
 {
-    // Redireciona para /login se nao houver usuario na sessao.
+    // Retorna erro 401 se nao houver usuario na sessao (para consumo via API/SPA).
     public function handle(Request $request): void
     {
         if ($request->user() === null) {
-            Response::redirect('/login');
+            Response::json(['error' => 'Não autorizado'], 401);
             exit;
         }
     }

@@ -35,6 +35,7 @@ $router->get('auth/login', [AuthController::class, 'showLogin']);
 $router->post('auth/login', [AuthController::class, 'login'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('auth/register', [AuthController::class, 'register'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('auth/logout', [AuthController::class, 'logout'], [AuthMiddleware::class]);
+$router->post('/recover-password', [AuthController::class, 'recoverPassword'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
 // RF04 - feed curado pelo Agente de Recomendacao; exige usuario autenticado.
 $router->get('/feed', [FeedController::class, 'index'], [AuthMiddleware::class]);

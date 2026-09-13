@@ -16,6 +16,15 @@ class Request
     public function __construct()
     {
         $this->query = $_GET;
+
+        $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
+
+        if (str_contains($contentType, 'application/json')) { 
+            $rawInput = file_get_contents('php://input');
+            $this->body = json_decode($rawInput, true) ?? [];
+        } else {
+            $this->body = $_POST;
+        }
         $this->server = $_SERVER;
         
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';

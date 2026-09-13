@@ -4,8 +4,6 @@ declare(strict_types= 1);
 
 namespace App\Models;
 
-use DateTime;
-
 // Classe abstrata para evitar repetição de propriedades iguais.
 abstract class Publicavel
 {
@@ -18,7 +16,8 @@ abstract class Publicavel
     public function __construct(
         public ?int $id = null,
         public ?int $userId = null,
-        public ?DateTime $dataDePostagem = null,
+        public ?string $dataDePostagem = null,
+        public ?string $dataEdicao = null,
         public string $conteudo = "",
         public string $status = self::STATUS_PUBLICO
     ) {  

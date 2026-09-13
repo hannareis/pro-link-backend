@@ -23,6 +23,18 @@ class UserRepository
         return $row ? $this->hydrate($row) : null;
     }
 
+    // Busca um usuario ativo pelo username (usado no login).
+    public function findByUsername(string $username): ?User
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT * FROM usuarios WHERE nome = :username AND conta_ativa = 1 LIMIT 1'
+        );
+        $stmt->execute(['username' => $username]);
+        $row = $stmt->fetch();
+
+        return $row ? $this->hydrate($row) : null;
+    }
+
     // Busca um usuario pelo id (traz inclusive contas inativas, para o admin).
     public function findById(int $id): ?User
     {

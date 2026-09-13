@@ -7,9 +7,9 @@ namespace App\Models;
 class Curtida
 {
     public function __construct(
-        public ?int $id = null,
         public ?int $userId = null,
         public ?int $publicavelId = null,
+        public ?string $data = null
     ) {
     }
 }

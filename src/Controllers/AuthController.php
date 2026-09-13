@@ -29,9 +29,9 @@ class AuthController
     // Valida credenciais (Core\Auth) e abre a sessao do usuario.
     public function login(Request $request): void
     {
-        $user = $this->userRepository->findByEmail((string) $request->input('email'));
+        $user = $this->userRepository->findByUsername((string) $request->input('username'));
 
-        if ($user === null || !Auth::verifyPassword((string) $request->input('senha'), $user->senhaHash)) {
+        if ($user === null || !Auth::verifyPassword((string) $request->input('password'), $user->senhaHash)) {
             Response::json(['message' => 'Credenciais invalidas.'], 401);
             return;
         }

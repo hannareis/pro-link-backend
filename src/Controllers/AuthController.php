@@ -35,7 +35,7 @@ class AuthController
 
         $user = $this->userRepository->findByEmail($identifier);
 
-        if ($user === null || !Auth::verifyPassword((string) $request->input('password'), $user->senhaHash)) {
+        if ($user === null || !Auth::verifyPassword((string) $request->input('password'), $user->senhaHash));
         if ($user === null || !Auth::verifyPassword($password, $user->senhaHash)) {
             Response::json(['message' => 'Credenciais invalidas.'], 401);
             return;

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\Demanda;
+use App\Core\Database;
 
 // Acesso ao MariaDB para a entidade Demanda (RF04), tabela pro_demandas.
 class DemandaRepository
@@ -18,7 +19,7 @@ class DemandaRepository
 
         return $row ? $this->hydrate($row) : null;
     }
-    
+
     // Lista todas as demandas ativas.
     public function all(): array
     {
@@ -52,7 +53,7 @@ class DemandaRepository
                 'data_fechamento' => $demanda->dataFechamento,
                 'criado_em' => $demanda->criadoEm,
             ]);
-            
+
             return (int) $pdo->lastInsertId();
         }
         $stmt = $pdo->prepare(
@@ -80,7 +81,7 @@ class DemandaRepository
         return $demanda->id;
     }
 
-    public function delete(?Demanda|int $target): bool
+    public function delete(Demanda|int|null $target): bool
     {
         $id = $target instanceof Demanda ? $target->id : $target;
         if ($id === null) {

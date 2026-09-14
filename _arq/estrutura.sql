@@ -188,6 +188,15 @@ CREATE TABLE universitarios (
 
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
+    grau_academico ENUM(
+        'TECNOLOGO',
+        'GRADUACAO',
+        'POS_GRADUACAO',
+        'MESTRADO',
+        'DOUTORADO',
+        'POS_DOUTORADO'
+    ) NOT NULL DEFAULT 'GRADUACAO',
+
     atualizado_em DATETIME NOT NULL
         DEFAULT CURRENT_TIMESTAMP
         ON UPDATE CURRENT_TIMESTAMP,

@@ -35,15 +35,16 @@ class UniversitarioRepository
     {
         $stmt = Database::connection()->prepare(
             'INSERT INTO universitarios
-                (id_usuario, universidade_id, curso, matricula, semestre_atual,
+                (id_usuario, universidade_id, curso, matricula, grau_academico, semestre_atual,
                  previsao_formatura, comprovante_matricula)
              VALUES
-                (:id_usuario, :universidade_id, :curso, :matricula, :semestre_atual,
+                (:id_usuario, :universidade_id, :curso, :matricula, :grau_academico, :semestre_atual,
                  :previsao_formatura, :comprovante_matricula)
              ON DUPLICATE KEY UPDATE
                 universidade_id = VALUES(universidade_id),
                 curso = VALUES(curso),
                 matricula = VALUES(matricula),
+                grau_academico = VALUES(grau_academico),
                 semestre_atual = VALUES(semestre_atual),
                 previsao_formatura = VALUES(previsao_formatura),
                 comprovante_matricula = VALUES(comprovante_matricula)'
@@ -53,6 +54,7 @@ class UniversitarioRepository
             'universidade_id' => $u->universidadeId,
             'curso' => $u->curso,
             'matricula' => $u->matricula,
+            'grau_academico' => $u->grau_academico,
             'semestre_atual' => $u->semestreAtual,
             'previsao_formatura' => $u->previsaoFormatura,
             'comprovante_matricula' => $u->comprovanteMatricula,
@@ -77,6 +79,7 @@ class UniversitarioRepository
             universidadeId: (int) $row['universidade_id'],
             curso: (string) $row['curso'],
             matricula: $row['matricula'] ?? null,
+            grau-academico: isset($row['grau_academico']) ? (string) $row['grau_academico']: null,
             semestreAtual: isset($row['semestre_atual']) ? (int) $row['semestre_atual'] : null,
             previsaoFormatura: $row['previsao_formatura'] ?? null,
             comprovanteMatricula: $row['comprovante_matricula'] ?? null,

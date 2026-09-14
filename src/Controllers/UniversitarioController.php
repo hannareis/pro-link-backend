@@ -52,6 +52,12 @@ class UniversitarioController
             universidadeId: $universidadeId,
             curso: (string) $request->input('curso', ''),
             matricula: $request->input('matricula'),
+
+            // Luan: incluindo grau acadêmico que estava faltando!
+            grau-academico: $request->input('grau_academico') !== null
+                ?(string) $request->input('grau_academico')
+                : null,
+
             semestreAtual: $request->input('semestre_atual') !== null
                 ? (int) $request->input('semestre_atual')
                 : null,

@@ -8,15 +8,28 @@ use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
+use App\Models\PessoaFisica;
+use App\Repositories\ProfissionalRepository;
+use App\Repositories\UniversidadeRepository;
+use App\Repositories\UniversitarioRepository;
 use App\Repositories\UserRepository;
+use App\Repositories\PessoaFisicaRepository;
+use App\Repositories\PessoaJuridicaRepository;
 use App\Services\CreaApiService;
+
+use DateTime;
 
 // RF01 - autenticacao, cadastro e recuperacao de acesso dos 6 perfis de usuario.
 class AuthController
 {
     public function __construct(
         private readonly UserRepository $userRepository = new UserRepository(),
-        private readonly CreaApiService $creaApiService = new CreaApiService()
+        private readonly CreaApiService $creaApiService = new CreaApiService(),
+        private readonly PessoaFisicaRepository $pessoaFisicaRepository = new PessoaFisicaRepository(),
+        private readonly PessoaJuridicaRepository $pessoaJuridicaRepository = new PessoaJuridicaRepository(),
+        private readonly ProfissionalRepository $profissionalRepository = new ProfissionalRepository(),
+        private readonly UniversitarioRepository $universitarioRepository = new UniversitarioRepository(),
+        private readonly UniversidadeRepository $universidadeRepository = new UniversidadeRepository()
     ) {
     }
 
@@ -60,6 +73,8 @@ class AuthController
         $email = (string) $request->input('email');
         $senha = (string) ($request->input('password') ?? $request->input('senha'));
         $telefone = (string) ($request->input('phone') ?? $request->input('telefone'));
+        $cpf = (string) $request->input('cpf', '');
+        $cnpj = (string) $request->input('cnpj', '');
         
         $profileTypeHtml = (string) $request->input('profile_type');
         
@@ -81,6 +96,18 @@ class AuthController
             return;
         }
 
+        // Erro caso o CPF/CNPJ já esteja cadastrado.
+
+        if ($cpf !== '' && $this->pessoaFisicaRepository->findByCpf($cpf)) {
+            Response::json(['message' => 'CPF já está em uso.', 409]);
+            return;
+        }
+
+        if ($cnpj !== '' && $this->pessoaJuridicaRepository->findByCnpj($cnpj)) {
+            Response::json(['message' => 'CNPJ já está em uso.', 409]);
+            return;
+        }
+
         $user = new \App\Models\User(
             id: null,
             nome: $nome,
@@ -99,7 +126,82 @@ class AuthController
 
         $userId = $this->userRepository->save($user);
 
+        if ($tipoPessoa === 'FISICA') {
+            $this->pessoaFisicaRepository->save(new PessoaFisica(
+                idUsuario: $userId,
+                cpf: $cpf
+            ));
+        }
+
+        $this->attachProfile($userId, $profileTypeHtml, $request);
+
         Response::json(['message' => 'Cadastro realizado com sucesso', 'user_id' => $userId], 201);
+    }
+
+    public function promote(Request $request): void
+    {
+        $userId = (int) $request->user()['id'];
+        $tipoContaAlvo = (string) $request->input('profile_type');
+
+        //TODO checar se o usuário já tem esse perfil, para não duplicar
+
+        $this->attachProfile($userId, $tipoContaAlvo, $request);
+
+        Response::json(['message' => 'Perfil atualizado com sucesso'], 201);
+    }
+
+    private function attachProfile(int $userId, string $tipoPerfil, Request $request): void
+    {
+        match ($tipoPerfil) {
+            'profissional' => $this->createProfissionalPerfil($userId, $request),
+            'universitario' => $this->createUniversitarioPerfil($userId, $request),
+            'empresa' => $this->createPessoaJuridicaPerfil($userId, $request),
+            default => null,
+        };
+    }
+
+    private function createProfissionalPerfil(int $userId, Request $request): void
+    {
+        $userProfissional = new \App\Models\Profissional(
+            idUsuario: $userId,
+            numeroRegistroConfeaCrea: (string) $request->input('crea-record', ''),
+            categoriaProfissional: (string) $request->input('categoria_profissional', ''),
+            anosExperiencia: (int) $request->input('anos_experiencia') ?: null,
+            grauAcademico: (string) $request->input('grau_academico'),
+        );
+        $this->profissionalRepository->save($userProfissional);
+    }
+
+    private function createUniversitarioPerfil(int $userId, Request $request): void
+    {
+        $universidade = (string) $request->input('institution_ensino');
+
+        //valida o formato da data recebida
+        $dataRecebida = (string) $request->input('previsao_formatura');
+        $data = DateTime::createFromFormat('Y-m-d', $dataRecebida);
+        $valida = $data && $data->format('Y-m-d') === $dataRecebida;
+        if (!$valida) Response::json(['message' => 'Data inválida']);
+
+        $userUniversitario = new \App\Models\Universitario(
+            idUsuario: $userId,
+            universidadeId: $this->universidadeRepository->findByNome($universidade)?->id ?? $this->universidadeRepository->findBySigla($universidade)?->id ?? 0,
+            curso: (string) $request->input('student_modality', ''),
+            matricula: (string) $request->input('student_ra') ?: null,
+            semestreAtual: (int) $request->input('semestre_atual') ?: null,
+            previsaoFormatura: $valida ? $dataRecebida : null
+        );
+        $this->universitarioRepository->save($userUniversitario);
+    }
+
+    private function createPessoaJuridicaPerfil(int $userId, Request $request): void
+    {
+        $userEmpresa = new \App\Models\PessoaJuridica(
+            idUsuario: $userId,
+            cnpj: (string) $request->input('cnpj', ''),
+            razaoSocial: (string) $request->input('razao_social', ''),
+            nomeFantasia: (string) $request->input('nome_fantasia') ?: null,
+        );
+        $this->pessoaJuridicaRepository->save($userEmpresa);
     }
 
     // Encerra a sessao atual.

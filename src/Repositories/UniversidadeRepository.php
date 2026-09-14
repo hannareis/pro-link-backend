@@ -19,6 +19,24 @@ class UniversidadeRepository
         return $row ? $this->hydrate($row) : null;
     }
 
+    public function findByNome(string $nome): ?Universidade
+    {
+        $stmt = Database::connection()->prepare('SELECT * FROM universidades WHERE nome = :nome LIMIT 1');
+        $stmt->execute(['nome' => strtolower($nome)]);
+        $row = $stmt->fetch();
+
+        return $row ? $this->hydrate($row) : null;
+    }
+
+    public function findBySigla(string $sigla): ?Universidade
+    {
+        $stmt = Database::connection()->prepare('SELECT * FROM universidades WHERE sigla = :sigla LIMIT 1');
+        $stmt->execute(['nome' => strtolower($sigla)]);
+        $row = $stmt->fetch();
+
+        return $row ? $this->hydrate($row) : null;
+    }
+
     // Lista universidades; por padrao apenas as ativas (catalogo publico).
     public function all(bool $somenteAtivas = true): array
     {

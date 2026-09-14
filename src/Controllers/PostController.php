@@ -1,68 +1,114 @@
 <?php
 
-declare(strict_types= 1);
+declare(strict_types=1);
 
 namespace App\Controllers;
 
 use App\Core\Request;
-use App\Repositories\CurtidaRepository;
-use App\Repositories\PostRepository;
+use App\Core\Response;
+use App\Models\Curtida;
 use App\Models\Post;
-use DateTime;
+use App\Repositories\CurtidaPostRepository;
+use App\Repositories\PostRepository;
 
+// RF05 - criacao, edicao e interacao com posts (curtidas).
+// Refatorado com assistência de Inteligência Artificial para alinhamento aos padrões arquiteturais do projeto.
 class PostController
 {
     public function __construct(
-        private readonly CurtidaRepository $curtidaRepository = new CurtidaRepository(),
-        private readonly PostRepository $postRepository = new PostRepository()
+        private readonly PostRepository $postRepository = new PostRepository(),
+        private readonly CurtidaPostRepository $curtidaPostRepository = new CurtidaPostRepository()
     ) {
     }
-        
-    // Adiciona a curtida ao repositório de curtidas atreladas ao post.
-    public function likePost(Request $request): void
-    {
-    
-    }
 
-    // Edita o post atrelado ao usuário.
-    public function editPost(Request $request): void
-    {
-
-    }
-
-    // Adiciona um ou mais anexos ao post.
-    public function addAttachment(Request $request): void
-    {
-
-    }
-
-    // Remove um ou mais anexos do post.
-    public function deleteAttachment(Request $request): void
-    {
-
-    }
-
+    // [IA]: Adequação para obtenção do usuário via auth_id() e envio de resposta JSON com status 201.
     public function store(Request $request): void
     {
-        $user = $request->user();
-        $userId = (int) $request->user()['id'];
-
-        $titulo = (string) $request->input('titulo', '');
-        $conteudo = (string) $request->input('conteudo', '');
-        $statusPost = (string) $request->input('status', '');
+        $userId = auth_id();
 
         $post = new Post(
-            id: null,
             userId: $userId,
-            dataDePostagem: new DateTime(),
-            conteudo: $conteudo,
-            titulo: $titulo,
-            status: $statusPost
+            conteudo: (string) $request->input('conteudo', ''),
+            titulo: (string) $request->input('titulo', ''),
+            status: (string) $request->input('status', ''),
         );
 
-        $this->postRepository->save($post);
+        $id = $this->postRepository->save($post);
 
-        //TODO header();
+        Response::json(['message' => 'Post criado.', 'id' => $id], 201);
     }
 
+    // [IA]: Implementação da consulta de post por ID com retorno dos dados ou código de erro 404.
+    public function show(Request $request): void
+    {
+        $post = $this->postRepository->findById((int) $request->input('id'));
+
+        if ($post === null) {
+            Response::json(['message' => 'Post nao encontrado.'], 404);
+            return;
+        }
+
+        Response::json(['data' => $post]);
+    }
+
+    // [IA]: Padronização do método para update, validação de autor (403), registro (404) e resposta em JSON.
+    public function update(Request $request): void
+    {
+        $id = (int) $request->input('id');
+        $userId = auth_id();
+
+        $post = $this->postRepository->findById($id);
+
+        if ($post === null) {
+            Response::json(['message' => 'Post nao encontrado.'], 404);
+            return;
+        }
+
+        // Validação de permissão: assegura que apenas o autor da publicação pode alterá-la.
+        if ($userId !== $post->userId) {
+            Response::json(['message' => 'Sem permissao para editar este post.'], 403);
+            return;
+        }
+
+        $post->titulo = (string) $request->input('titulo', $post->titulo);
+        $post->conteudo = (string) $request->input('conteudo', $post->conteudo);
+        $post->status = (string) $request->input('status', $post->status);
+        $this->postRepository->save($post);
+
+        Response::json(['message' => 'Post atualizado.']);
+    }
+
+    // [IA]: Ajuste da assinatura para retorno void e envio de confirmação de exclusão em formato JSON.
+    public function destroy(Request $request): void
+    {
+        $this->postRepository->delete(
+            $this->postRepository->findById((int) $request->input('id'))
+        );
+
+        Response::json(['message' => 'Post removido.']);
+    }
+
+    // [IA]: Adequação da lógica de curtida/descurtida com auth_id() e retorno formalizado via Response::json().
+    public function likePost(Request $request): void
+    {
+        $userId = auth_id();
+        $postId = (int) $request->input('id_post');
+
+        $curtida = $this->curtidaPostRepository->findByUsuarioEPost($userId, $postId);
+
+        if ($curtida === null) {
+            $curtida = new Curtida(
+                userId: $userId,
+                publicavelId: $postId,
+            );
+            $this->curtidaPostRepository->save($curtida);
+
+            Response::json(['message' => 'Post curtido.']);
+            return;
+        }
+
+        $this->curtidaPostRepository->delete($curtida);
+
+        Response::json(['message' => 'Curtida removida.']);
+    }
 }

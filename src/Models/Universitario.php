@@ -12,6 +12,7 @@ class Universitario
         public int $idUsuario = 0,
         public int $universidadeId = 0,
         public string $curso = '',
+        public string $gra_academico = null, // Luan: faltava adicionar o grau acadêmico
         public ?string $matricula = null,
         public ?int $semestreAtual = null,
         public ?string $previsaoFormatura = null,

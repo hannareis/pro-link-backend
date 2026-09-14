@@ -58,6 +58,34 @@ CREATE TABLE usuarios (
 
 
 -- ============================================================
+-- TOKENS DE REDEFINIÇÃO DE SENHA
+-- ============================================================
+
+CREATE TABLE tokens_redefinicao_senha (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    id_usuario INT UNSIGNED NOT NULL,
+
+    token_hash CHAR(64) NOT NULL UNIQUE,
+
+    expira_em DATETIME NOT NULL,
+
+    usado_em DATETIME NULL,
+
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_token_redefinicao_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    INDEX idx_token_redefinicao_usuario (id_usuario),
+    INDEX idx_token_redefinicao_expira (expira_em)
+) ENGINE=InnoDB;
+
+
+-- ============================================================
 -- PESSOA FÍSICA
 -- ============================================================
 

@@ -8,7 +8,9 @@ use App\Core\Auth;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
+use App\Models\PasswordResetToken;
 use App\Models\PessoaFisica;
+use App\Repositories\PasswordResetTokenRepository;
 use App\Repositories\ProfissionalRepository;
 use App\Repositories\UniversidadeRepository;
 use App\Repositories\UniversitarioRepository;
@@ -16,6 +18,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\PessoaFisicaRepository;
 use App\Repositories\PessoaJuridicaRepository;
 use App\Services\CreaApiService;
+use App\Services\NotificacaoService;
 
 use DateTime;
 
@@ -29,7 +32,9 @@ class AuthController
         private readonly PessoaJuridicaRepository $pessoaJuridicaRepository = new PessoaJuridicaRepository(),
         private readonly ProfissionalRepository $profissionalRepository = new ProfissionalRepository(),
         private readonly UniversitarioRepository $universitarioRepository = new UniversitarioRepository(),
-        private readonly UniversidadeRepository $universidadeRepository = new UniversidadeRepository()
+        private readonly UniversidadeRepository $universidadeRepository = new UniversidadeRepository(),
+        private readonly PasswordResetTokenRepository $passwordResetTokenRepository = new PasswordResetTokenRepository(),
+        private readonly NotificacaoService $notificacaoService = new NotificacaoService()
     ) {
     }
 
@@ -211,7 +216,8 @@ class AuthController
         Response::json(['message' => 'Logout concluído']);
     }
 
-    // Processa o pedido de recuperacao de senha.
+    // Processa o pedido de recuperacao de senha: gera um token de uso unico e
+    // dispara o e-mail com o link de redefinicao via SMTP (RF07).
     public function recoverPassword(Request $request): void
     {
         $email = (string) $request->input('email');
@@ -219,9 +225,64 @@ class AuthController
             Response::json(['message' => 'E-mail obrigatório'], 400);
             return;
         }
-        
-        // Em produção, isso dispararia um e-mail com link de recuperação.
-        // Aqui simulamos o sucesso da operação.
+
+        $user = $this->userRepository->findByEmail($email);
+
+        // A resposta e sempre a mesma independente do e-mail existir, para nao
+        // permitir que terceiros descubram quais e-mails estao cadastrados.
+        if ($user !== null) {
+            $tokenPlano = bin2hex(random_bytes(32));
+
+            $this->passwordResetTokenRepository->save(new PasswordResetToken(
+                idUsuario: (int) $user->id,
+                tokenHash: hash('sha256', $tokenPlano),
+                expiraEm: date('Y-m-d H:i:s', time() + 1800),
+            ));
+
+            $link = rtrim((string) config('app.url'), '/') . '/reset-password?token=' . $tokenPlano;
+
+            $this->notificacaoService->enviarEmail(
+                $user->email,
+                'Redefinição de senha - Pro-Link',
+                sprintf(
+                    '<p>Olá, %s.</p>'
+                    . '<p>Recebemos um pedido de redefinição de senha para esta conta. '
+                    . 'O link abaixo é válido por 30 minutos:</p>'
+                    . '<p><a href="%s">%s</a></p>'
+                    . '<p>Se você não solicitou essa alteração, ignore este e-mail.</p>',
+                    htmlspecialchars($user->nome),
+                    $link,
+                    $link
+                )
+            );
+        }
+
         Response::json(['message' => 'Se o e-mail existir, um link de recuperação foi enviado.']);
+    }
+
+    // Consome o token enviado por e-mail e grava a nova senha do usuario.
+    public function resetPassword(Request $request): void
+    {
+        $token = (string) $request->input('token');
+        $novaSenha = (string) ($request->input('password') ?? $request->input('senha'));
+
+        if (empty($token) || empty($novaSenha)) {
+            Response::json(['message' => 'Token e nova senha são obrigatórios.'], 400);
+            return;
+        }
+
+        $resetToken = $this->passwordResetTokenRepository->findValidoByHash(hash('sha256', $token));
+        $user = $resetToken !== null ? $this->userRepository->findById($resetToken->idUsuario) : null;
+
+        if ($resetToken === null || $user === null) {
+            Response::json(['message' => 'Token inválido ou expirado.'], 400);
+            return;
+        }
+
+        $user->senhaHash = Auth::hashPassword($novaSenha);
+        $this->userRepository->save($user);
+        $this->passwordResetTokenRepository->marcarUsado((int) $resetToken->id);
+
+        Response::json(['message' => 'Senha redefinida com sucesso.']);
     }
 }

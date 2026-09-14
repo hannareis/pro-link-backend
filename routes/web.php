@@ -49,6 +49,8 @@ $router->post('/perfil', [UserController::class, 'update'], [AuthMiddleware::cla
 // RF03 - portfolio profissional/academico/empresarial.
 $router->get('/portfolio/{id}', [PortfolioController::class, 'show']);
 $router->post('/portfolio', [PortfolioController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/portfolio/{id}', [PortfolioController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/portfolio/{id}/remover', [PortfolioController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 
 // RF04 - cadastro e listagem de demandas (aciona o NLP de recomendacao de area).
 $router->get('/demandas', [DemandaController::class, 'index'], [AuthMiddleware::class]);

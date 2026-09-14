@@ -76,8 +76,8 @@ class UniversidadeController
     private function fromRequest(Request $request): Universidade
     {
         return new Universidade(
-            nome: (string) $request->input('nome', ''),
-            sigla: $request->input('sigla'),
+            nome: strtolower((string) $request->input('nome', '')),
+            sigla: strtolower($request->input('sigla')),
             cnpj: $request->input('cnpj'),
             tipo: (string) $request->input('tipo', Universidade::TIPO_OUTRA),
             cidade: $request->input('cidade'),

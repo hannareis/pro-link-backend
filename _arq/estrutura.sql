@@ -1257,3 +1257,31 @@ CREATE TABLE sis_auditoria (
         aud_dt_registro
     )
 ) ENGINE=InnoDB;
+
+
+-- ============================================================
+-- NOTIFICACOES
+-- ============================================================
+
+CREATE TABLE notificacoes (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    id_usuario INT UNSIGNED NOT NULL,
+
+    mensagem TEXT NOT NULL,
+
+    lida BOOLEAN NOT NULL DEFAULT FALSE,
+
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_notificacao_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    INDEX idx_notificacoes_usuario_lida (
+        id_usuario,
+        lida
+    )
+) ENGINE=InnoDB;

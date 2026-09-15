@@ -13,6 +13,7 @@ use App\Controllers\DenunciaController;
 use App\Controllers\EspecialidadeController;
 use App\Controllers\ExperienciaController;
 use App\Controllers\FeedController;
+use App\Controllers\NotificacaoController;
 use App\Controllers\PortfolioController;
 use App\Controllers\PostAnexoController;
 use App\Controllers\ProfissionalController;
@@ -40,6 +41,10 @@ $router->post('/reset-password', [AuthController::class, 'resetPassword'], [Sani
 // RF04 - feed curado pelo Agente de Recomendacao; exige usuario autenticado.
 $router->get('/feed', [FeedController::class, 'index'], [AuthMiddleware::class]);
 $router->post('/feed', [FeedController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+
+// RF07 - notificacoes internas do painel do usuario autenticado.
+$router->get('/notificacoes', [NotificacaoController::class, 'index'], [AuthMiddleware::class]);
+$router->post('/notificacoes/marcar-lida', [NotificacaoController::class, 'markAsRead'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
 // RF01/RF03 - visualizacao publica de perfil; edicao exige autenticacao.
 $router->get('/perfil/{id}', [UserController::class, 'show']);

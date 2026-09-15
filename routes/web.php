@@ -71,6 +71,10 @@ $router->post('/posts/{id}/like', [PostController::class, 'likePost'], [AuthMidd
 
 // RF06 - painel administrativo, restrito ao perfil admin via RoleMiddleware.
 $router->get('/admin', [AdminController::class, 'dashboard'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN])]);
+$router->get('/admin/usuarios', [AdminController::class, 'manageUsers'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
+$router->post('/admin/usuarios/status', [AdminController::class, 'toggleUserStatus'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->get('/admin/moderacao', [AdminController::class, 'moderation'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
+$router->get('/admin/auditoria', [AdminController::class, 'auditLogs'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 
 // ============================================================
 // Rotas das entidades do estrutura.sql

@@ -79,7 +79,7 @@ class UniversitarioRepository
             universidadeId: (int) $row['universidade_id'],
             curso: (string) $row['curso'],
             matricula: $row['matricula'] ?? null,
-            grau-academico: isset($row['grau_academico']) ? (string) $row['grau_academico']: null,
+            grau_academico: isset($row['grau_academico']) ? (string) $row['grau_academico'] : null,
             semestreAtual: isset($row['semestre_atual']) ? (int) $row['semestre_atual'] : null,
             previsaoFormatura: $row['previsao_formatura'] ?? null,
             comprovanteMatricula: $row['comprovante_matricula'] ?? null,

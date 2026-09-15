@@ -13,6 +13,7 @@ use App\Repositories\DenunciaRepository;
 use App\Repositories\ProfissionalRepository;
 use App\Repositories\UserRepository;
 use App\Services\AuditoriaService;
+use App\Services\DadosPublicosService;
 
 // RF06 - painel administrativo, separado do restante da plataforma (feed, portfolios etc).
 class AdminController
@@ -22,7 +23,8 @@ class AdminController
         private readonly AuditoriaRepository $auditoriaRepository = new AuditoriaRepository(),
         private readonly UserRepository $usuarios = new UserRepository(),
         private readonly ProfissionalRepository $profissionais = new ProfissionalRepository(),
-        private readonly DenunciaRepository $denuncias = new DenunciaRepository()
+        private readonly DenunciaRepository $denuncias = new DenunciaRepository(),
+        private readonly DadosPublicosService $dadosPublicosService = new DadosPublicosService()
     ) {
     }
 
@@ -103,6 +105,20 @@ class AdminController
         };
 
         Response::json(['data' => $logs]);
+    }
+
+    // Item 4.3 da proposta - dados complementares de bases publicas (dados.gov.br) para
+    // apoiar a analise do ADMIN_CREA; e indicativo, nunca gravado automaticamente no cadastro.
+    public function dadosPublicos(Request $request): void
+    {
+        $termo = trim((string) $request->input('q', ''));
+
+        if ($termo === '') {
+            Response::json(['message' => 'Parâmetro de busca (q) obrigatório.'], 422);
+            return;
+        }
+
+        Response::json(['data' => $this->dadosPublicosService->buscarComplementar($termo)]);
     }
 
     // Remove dados sensiveis (senha_hash) antes de expor o usuario via JSON.

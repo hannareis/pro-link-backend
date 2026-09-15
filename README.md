@@ -26,20 +26,19 @@ pro-link-backend/
 ├── src/
 │   ├── Core/                   # Router, Request, Response, Database (PDO), View
 │   ├── Middleware/              # AuthMiddleware, CsrfMiddleware, SanitizeInputMiddleware, RoleMiddleware
-│   ├── Controllers/             # Auth, User, Portfolio, Demanda, CartaVirtual, Feed, Admin
+│   ├── Controllers/             # Auth, User, Portfolio, Demanda, Feed, Admin
 │   ├── Services/                 # Camada de Dominio/Negocio (RF02-RF07)
 │   │   ├── CreaApiService.php          # RF02 - integracao API oficial CREA-AM
 │   │   ├── RecomendacaoService.php     # RF04 - Agente de Recomendacao (NLP)
-│   │   ├── CartaVirtualService.php     # RF05 - check-in / check-out
 │   │   ├── NotificacaoService.php      # RF07 - SMTP / notificacoes internas
 │   │   ├── AuditoriaService.php        # RF06 - logs e indicadores
 │   │   └── DadosPublicosService.php    # dados.gov.br (assistido por IA, com auditoria humana)
-│   ├── Models/                   # User, Portfolio, Demanda, CartaVirtual, ArtCat, AuditLog
+│   ├── Models/                   # User, Portfolio, Demanda, ArtCat, AuditLog
 │   ├── Repositories/             # Acesso ao MariaDB (exclusao logica status = 'X')
 │   └── Helpers/                  # Sanitizer, Validator, functions.php (csrf_token, config)
 │
 ├── views/                       # Templates HTML5/CSS3, sem logica de negocio
-│   ├── layouts/  auth/  feed/  portfolio/  demanda/  carta-virtual/  admin/  errors/
+│   ├── layouts/  auth/  feed/  portfolio/  demanda/  admin/  errors/
 │
 ├── database/
 │   └── seeders/                  # dados sinteticos para o Demo Day

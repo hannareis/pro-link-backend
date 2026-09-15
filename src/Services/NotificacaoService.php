@@ -10,8 +10,8 @@ use PHPMailer\PHPMailer\PHPMailer;
 // RF07 - notificacoes internas (painel) e externas (SMTP) da plataforma.
 class NotificacaoService
 {
-    // Dispara um e-mail via SMTP (Anexo I, item 8.3.1 do Edital), usado no
-    // check-out das Cartas Virtuais, alertas administrativos e recuperacao de senha.
+    // Dispara um e-mail via SMTP (Anexo I, item 8.3.1 do Edital), usado em
+    // alertas administrativos e recuperacao de senha.
     public function enviarEmail(string $destinatario, string $assunto, string $corpo): bool
     {
         $mail = new PHPMailer(true);

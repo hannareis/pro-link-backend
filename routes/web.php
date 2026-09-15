@@ -42,9 +42,13 @@ $router->post('/reset-password', [AuthController::class, 'resetPassword'], [Sani
 $router->get('/feed', [FeedController::class, 'index'], [AuthMiddleware::class]);
 $router->post('/feed', [FeedController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
-// RF01/RF03 - visualizacao publica de perfil; edicao exige autenticacao.
+// RF01/RF03 - visualizacao publica de perfil; edicao/exclusao exige autenticacao.
+$router->get('/usuarios', [UserController::class, 'index'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->get('/perfil/{id}', [UserController::class, 'show']);
 $router->post('/perfil', [UserController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/perfil/remover', [UserController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
+$router->get('/perfil/privacidade', [UserController::class, 'privacySettings'], [AuthMiddleware::class]);
+$router->post('/perfil/privacidade', [UserController::class, 'updatePrivacySettings'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
 // RF03 - portfolio profissional/academico/empresarial.
 $router->get('/portfolio/{id}', [PortfolioController::class, 'show']);

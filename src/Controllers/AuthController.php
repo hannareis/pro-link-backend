@@ -9,8 +9,9 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
 use App\Models\PasswordResetToken;
-use App\Models\PessoaFisica;
 use App\Repositories\PasswordResetTokenRepository;
+use App\Models\PessoaFisica;
+use App\Repositories\PortfolioRepository;
 use App\Repositories\ProfissionalRepository;
 use App\Repositories\UniversidadeRepository;
 use App\Repositories\UniversitarioRepository;
@@ -30,6 +31,7 @@ class AuthController
         private readonly CreaApiService $creaApiService = new CreaApiService(),
         private readonly PessoaFisicaRepository $pessoaFisicaRepository = new PessoaFisicaRepository(),
         private readonly PessoaJuridicaRepository $pessoaJuridicaRepository = new PessoaJuridicaRepository(),
+        private readonly PortfolioRepository $portfolioRepository = new PortfolioRepository(),
         private readonly ProfissionalRepository $profissionalRepository = new ProfissionalRepository(),
         private readonly UniversitarioRepository $universitarioRepository = new UniversitarioRepository(),
         private readonly UniversidadeRepository $universidadeRepository = new UniversidadeRepository(),
@@ -78,15 +80,15 @@ class AuthController
         $email = (string) $request->input('email');
         $senha = (string) ($request->input('password') ?? $request->input('senha'));
         $telefone = (string) ($request->input('phone') ?? $request->input('telefone'));
-        $cpf = (string) $request->input('cpf', '');
-        $cnpj = (string) $request->input('cnpj', '');
-        
+        $cpf = (string) $request->input('document_number', '');
+        $cnpj = (string) $request->input('document_number', '');
+
         $profileTypeHtml = (string) $request->input('profile_type');
-        
+
         // Mapeamento do tipo de pessoa baseado no profile_type
         // No banco de dados, o campo é ENUM('FISICA', 'JURIDICA')
         $tipoPessoa = ($profileTypeHtml === 'empresa') ? 'JURIDICA' : 'FISICA';
-        
+
         // Mapeamento do Perfil de Acesso baseado no HTML Select
         // No banco de dados, o campo é ENUM('USUARIO', 'ADMIN_CREA')
         $perfilAcesso = 'USUARIO';
@@ -129,7 +131,9 @@ class AuthController
             atualizadoEm: null
         );
 
+
         $userId = $this->userRepository->save($user);
+
 
         if ($tipoPessoa === 'FISICA') {
             $this->pessoaFisicaRepository->save(new PessoaFisica(
@@ -137,6 +141,14 @@ class AuthController
                 cpf: $cpf
             ));
         }
+
+        $portfolio = new \App\Models\Portfolio(
+            id: null,
+            idUsuario: (int) $userId,
+            linksContato: [$user->email]
+        );
+
+        $this->portfolioRepository->save($portfolio);
 
         $this->attachProfile($userId, $profileTypeHtml, $request);
 
@@ -185,7 +197,8 @@ class AuthController
         $dataRecebida = (string) $request->input('previsao_formatura');
         $data = DateTime::createFromFormat('Y-m-d', $dataRecebida);
         $valida = $data && $data->format('Y-m-d') === $dataRecebida;
-        if (!$valida) Response::json(['message' => 'Data inválida']);
+        if (!$valida)
+            Response::json(['message' => 'Data inválida']);
 
         $userUniversitario = new \App\Models\Universitario(
             idUsuario: $userId,

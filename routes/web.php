@@ -49,6 +49,9 @@ $router->post('/notificacoes/marcar-lida', [NotificacaoController::class, 'markA
 // RF01/RF03 - visualizacao publica de perfil; edicao exige autenticacao.
 $router->get('/perfil/{id}', [UserController::class, 'show']);
 $router->post('/perfil', [UserController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/perfil/remover', [UserController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
+$router->get('/perfil/privacidade', [UserController::class, 'privacySettings'], [AuthMiddleware::class]);
+$router->post('/perfil/privacidade', [UserController::class, 'updatePrivacySettings'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
 // RF03 - portfolio profissional/academico/empresarial.
 $router->get('/portfolio/{id}', [PortfolioController::class, 'show']);

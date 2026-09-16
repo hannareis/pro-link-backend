@@ -19,6 +19,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\PessoaFisicaRepository;
 use App\Repositories\PessoaJuridicaRepository;
 use App\Services\CreaApiService;
+use App\Services\FileUploadService;
 use App\Services\NotificacaoService;
 
 use DateTime;
@@ -228,44 +229,16 @@ class AuthController
         $this->universitarioRepository->save($userUniversitario);
     }
 
-    // Valida (tamanho + MIME real via fileinfo, nao a extensao/Content-Type enviados
-    // pelo cliente) e move o comprovante de matricula para PATH_UPLOADS com um nome
-    // gerado aleatoriamente, evitando path traversal e upload de arquivos executaveis.
     // Retorna null se nao houver arquivo (campo opcional); lanca InvalidArgumentException
     // se um arquivo foi enviado mas e invalido, para o cadastro ser bloqueado com 400.
     private function storeComprovanteMatricula(?array $file): ?string
     {
-        if ($file === null) {
-            return null;
-        }
+        $uploadService = new FileUploadService(
+            self::COMPROVANTE_MIMES_PERMITIDOS,
+            self::COMPROVANTE_TAMANHO_MAXIMO_BYTES
+        );
 
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            throw new \InvalidArgumentException('Falha no envio do comprovante de matrícula.');
-        }
-
-        if ($file['size'] > self::COMPROVANTE_TAMANHO_MAXIMO_BYTES) {
-            throw new \InvalidArgumentException('Comprovante de matrícula excede o tamanho máximo de 5MB.');
-        }
-
-        $mime = mime_content_type($file['tmp_name']);
-        $extensao = self::COMPROVANTE_MIMES_PERMITIDOS[$mime] ?? null;
-
-        if ($extensao === null) {
-            throw new \InvalidArgumentException('Comprovante de matrícula deve ser PDF, JPG ou PNG.');
-        }
-
-        $diretorio = PATH_UPLOADS . '/comprovantes_matricula';
-        if (!is_dir($diretorio) && !mkdir($diretorio, 0755, true) && !is_dir($diretorio)) {
-            throw new \RuntimeException('Não foi possível salvar o comprovante de matrícula.');
-        }
-
-        $nomeArmazenado = bin2hex(random_bytes(16)) . '.' . $extensao;
-
-        if (!move_uploaded_file($file['tmp_name'], $diretorio . '/' . $nomeArmazenado)) {
-            throw new \RuntimeException('Não foi possível salvar o comprovante de matrícula.');
-        }
-
-        return 'uploads/comprovantes_matricula/' . $nomeArmazenado;
+        return $uploadService->store($file, 'comprovantes_matricula')['caminho_armazenamento'] ?? null;
     }
 
     private function createPessoaJuridicaPerfil(int $userId, Request $request): void

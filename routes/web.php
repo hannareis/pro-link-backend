@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Controllers\AdminController;
 use App\Controllers\ArtController;
 use App\Controllers\AuthController;
+use App\Controllers\CartaVirtualController;
 use App\Controllers\CatController;
 use App\Controllers\CompetenciaController;
 use App\Controllers\DemandaController;
@@ -165,3 +166,10 @@ $router->get('/denuncias', [DenunciaController::class, 'index'], [AuthMiddleware
 $router->get('/denuncias/{id}', [DenunciaController::class, 'show'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->post('/denuncias', [DenunciaController::class, 'store'], $write);
 $router->post('/denuncias/{id}/analisar', [DenunciaController::class, 'analisar'], $adminWrite);
+
+// Cartas virtuais: criadas e visiveis apenas para o autor (contem e-mails pessoais).
+$router->get('/cartas-virtuais', [CartaVirtualController::class, 'index'], $auth);
+$router->get('/cartas-virtuais/{id}', [CartaVirtualController::class, 'show'], $auth);
+$router->post('/cartas-virtuais', [CartaVirtualController::class, 'store'], $write);
+$router->post('/cartas-virtuais/{id}/editar', [CartaVirtualController::class, 'update'], $write);
+$router->post('/cartas-virtuais/{id}/remover', [CartaVirtualController::class, 'destroy'], $write);

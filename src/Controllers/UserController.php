@@ -195,6 +195,7 @@ class UserController
             'telefone' => $user->telefone,
             'tipo_pessoa' => $user->tipoPessoa,
             'perfil_acesso' => $user->perfilAcesso,
+            'tipo_conta' => $user->tipoConta,
             'conta_ativa' => $user->contaAtiva,
             'criado_em' => $user->criadoEm,
         ];

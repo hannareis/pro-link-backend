@@ -28,6 +28,13 @@ CREATE TABLE usuarios (
         'ADMIN_CREA'
     ) NOT NULL DEFAULT 'USUARIO',
 
+    tipo_conta ENUM(
+        'COMUM',
+        'ESTUDANTE',
+        'PROFISSIONAL',
+        'EMPRESA'
+    ) NOT NULL DEFAULT 'COMUM',
+
     nome VARCHAR(150) NOT NULL,
 
     senha_hash VARCHAR(255) NOT NULL,
@@ -52,6 +59,7 @@ CREATE TABLE usuarios (
 
     INDEX idx_usuarios_tipo_pessoa (tipo_pessoa),
     INDEX idx_usuarios_perfil_acesso (perfil_acesso),
+    INDEX idx_usuarios_tipo_conta (tipo_conta),
     INDEX idx_usuarios_conta_ativa (conta_ativa),
     INDEX idx_usuarios_nome (nome)
 ) ENGINE=InnoDB;

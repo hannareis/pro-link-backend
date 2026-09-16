@@ -28,14 +28,6 @@ class Request
             $this->body = $_POST;
         }
         $this->server = $_SERVER;
-        
-        $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
-        if (str_contains($contentType, 'application/json')) {
-            $json = json_decode(file_get_contents('php://input'), true);
-            $this->body = is_array($json) ? $json : [];
-        } else {
-            $this->body = $_POST;
-        }
     }
 
     // Busca um valor no corpo da requisicao, com fallback para a query string.

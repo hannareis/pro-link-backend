@@ -14,6 +14,7 @@ use App\Repositories\PessoaFisicaRepository;
 use App\Repositories\PortfolioRepository;
 use App\Repositories\ProfissionalRepository;
 use App\Repositories\ProjetoRepository;
+use App\Repositories\UserRepository;
 use App\Services\CreaApiService;
 
 // RF03 - portfolio profissional/academico/empresarial, vitrine principal do usuario.
@@ -24,6 +25,7 @@ class PortfolioController
         private readonly PessoaFisicaRepository $pessoasFisicas = new PessoaFisicaRepository(),
         private readonly ProfissionalRepository $profissionais = new ProfissionalRepository(),
         private readonly ProjetoRepository $projetos = new ProjetoRepository(),
+        private readonly UserRepository $usuarios = new UserRepository(),
         private readonly ExperienciaRepository $experiencias = new ExperienciaRepository(),
         private readonly ArtRepository $arts = new ArtRepository(),
         private readonly CatRepository $cats = new CatRepository(),
@@ -34,25 +36,43 @@ class PortfolioController
     // Exibe o portfolio com suas abas: resumo, competencias, ARTs/CATs, projetos, experiencias.
     public function show(Request $request): void
     {
-        $portfolio = $this->portfolios->findById((int) $request->input('id'));
+        //$portfolio = $this->portfolios->findById((int) $request->input('id'));
+        $userId = (int) $request->user()['id'];
+        $portfolio = $this->portfolios->findByUsuarioId($userId);
+
+        $user = $this->usuarios->findById($userId);
 
         if ($portfolio === null) {
-            Response::json(['message' => 'Portfolio não encontrado.'], 404);
+            Response::json(['message' => 'Portfolio não encontrado.' . $request->user()['id']], 404);
             return;
         }
 
         $idUsuario = $portfolio->idUsuario;
-        $ehProfissional = $this->profissionais->findByUsuarioId($idUsuario) !== null;
+        $profissional = $this->profissionais->findByUsuarioId($idUsuario) ?: null;
 
         Response::json([
-            'data' => $portfolio,
-            'competencias' => $ehProfissional
-                ? $this->profissionais->competenciasDoProfissional($idUsuario)
-                : [],
-            'projetos' => $this->projetos->listByPortfolio((int) $portfolio->id),
+            'usuario' => [
+                'nome' => $user->nome,
+                'email' => $user->email
+            ],
+            'profissional' => [
+                'categoria_profissional' => ($profissional !== null) ? $profissional->categoriaProfissional : '',
+                'registro_validado' => ($profissional !== null) ? $profissional->registroValidado : false,
+                'numero_registro_confrea_crea' => ($profissional !== null) ? $profissional->numeroRegistroConfeaCrea : '',
+            ],
+            'portfolio' => [
+                'links_contato' => [
+                    'linkedin' => $portfolio->linksContato[0] ?? null,
+                    'github' => $portfolio->linksContato[1] ?? null
+                ],
+                'resumo_profissional' => $portfolio->resumoProfissional,
+            ],
+            'competencias' => $this->profissionais->competenciasDoProfissional($idUsuario) ?: [],
             'experiencias' => $this->experiencias->listByPortfolio((int) $portfolio->id),
-            'arts' => $this->arts->listByPortfolio((int) $portfolio->id),
-            'cats' => $this->cats->listByPortfolio((int) $portfolio->id),
+            'acervo_tecnico' => [
+                'arts_aprovadas' => $this->arts->listByPortfolio((int) $portfolio->id),
+                'cats_validas' => $this->cats->listByPortfolio((int) $portfolio->id),
+            ],
         ]);
     }
 

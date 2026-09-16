@@ -34,9 +34,9 @@ use App\Models\User;
 /** @var \App\Core\Router $router */
 
 // RF01 - autenticacao e cadastro. POSTs passam por sanitizacao e protecao CSRF.
-$router->get('auth/login', [AuthController::class, 'showLogin']);
-$router->post('auth/login', [AuthController::class, 'login'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
-$router->post('auth/register', [AuthController::class, 'register'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->get('/auth/login', [AuthController::class, 'showLogin']);
+$router->post('/auth/login', [AuthController::class, 'login'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/auth/register', [AuthController::class, 'register'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('auth/logout', [AuthController::class, 'logout'], [AuthMiddleware::class]);
 $router->post('/recover-password', [AuthController::class, 'recoverPassword'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/reset-password', [AuthController::class, 'resetPassword'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
@@ -58,6 +58,7 @@ $router->post('/perfil/privacidade', [UserController::class, 'updatePrivacySetti
 
 // RF03 - portfolio profissional/academico/empresarial.
 $router->get('/portfolio/{id}', [PortfolioController::class, 'show']);
+$router->get('/portfolio/me', [PortfolioController::class, 'show']);
 $router->post('/portfolio', [PortfolioController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/portfolio/{id}', [PortfolioController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/portfolio/{id}/remover', [PortfolioController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);

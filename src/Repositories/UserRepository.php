@@ -71,13 +71,14 @@ class UserRepository
         if ($user->id === null) {
             $stmt = $pdo->prepare(
                 'INSERT INTO usuarios
-                    (tipo_pessoa, perfil_acesso, nome, senha_hash, telefone, email, conta_ativa)
+                    (tipo_pessoa, perfil_acesso, tipo_conta, nome, senha_hash, telefone, email, conta_ativa)
                  VALUES
-                    (:tipo_pessoa, :perfil_acesso, :nome, :senha_hash, :telefone, :email, :conta_ativa)'
+                    (:tipo_pessoa, :perfil_acesso, :tipo_conta, :nome, :senha_hash, :telefone, :email, :conta_ativa)'
             );
             $stmt->execute([
                 'tipo_pessoa' => $user->tipoPessoa,
                 'perfil_acesso' => $user->perfilAcesso,
+                'tipo_conta' => $user->tipoConta,
                 'nome' => $user->nome,
                 'senha_hash' => $user->senhaHash,
                 'telefone' => $user->telefone,
@@ -92,6 +93,7 @@ class UserRepository
             'UPDATE usuarios SET
                 tipo_pessoa = :tipo_pessoa,
                 perfil_acesso = :perfil_acesso,
+                tipo_conta = :tipo_conta,
                 nome = :nome,
                 senha_hash = :senha_hash,
                 telefone = :telefone,
@@ -102,6 +104,7 @@ class UserRepository
         $stmt->execute([
             'tipo_pessoa' => $user->tipoPessoa,
             'perfil_acesso' => $user->perfilAcesso,
+            'tipo_conta' => $user->tipoConta,
             'nome' => $user->nome,
             'senha_hash' => $user->senhaHash,
             'telefone' => $user->telefone,
@@ -162,6 +165,7 @@ class UserRepository
             telefone: (string) $row['telefone'],
             tipoPessoa: (string) $row['tipo_pessoa'],
             perfilAcesso: (string) $row['perfil_acesso'],
+            tipoConta: (string) $row['tipo_conta'],
             contaAtiva: (bool) $row['conta_ativa'],
             ultimoLoginEm: $row['ultimo_login_em'] ?? null,
             tentativasLogin: (int) $row['tentativas_login'],

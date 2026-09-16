@@ -5,11 +5,13 @@ declare(strict_types=1);
 use App\Controllers\AdminController;
 use App\Controllers\ArtController;
 use App\Controllers\AuthController;
+use App\Controllers\CartaVirtualController;
 use App\Controllers\CatController;
 use App\Controllers\CompetenciaController;
 use App\Controllers\DemandaController;
 use App\Controllers\DemonstracaoInteresseController;
 use App\Controllers\DenunciaController;
+use App\Controllers\EmpresaController;
 use App\Controllers\EspecialidadeController;
 use App\Controllers\ExperienciaController;
 use App\Controllers\FeedController;
@@ -18,6 +20,7 @@ use App\Controllers\PortfolioController;
 use App\Controllers\PostAnexoController;
 use App\Controllers\ProfissionalController;
 use App\Controllers\ProjetoController;
+use App\Controllers\TosController;
 use App\Controllers\UniversidadeController;
 use App\Controllers\UniversitarioController;
 use App\Controllers\UserController;
@@ -91,6 +94,9 @@ $auth = [AuthMiddleware::class];
 $write = [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class];
 $adminWrite = [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class];
 
+// RF02/RF04 - busca na Tabela de Obras e Servicos (TOS) da API oficial do CREA-AM.
+$router->get('/tos', [TosController::class, 'search']);
+
 // RF01/RF03 - catalogo de universidades (leitura publica, escrita ADMIN_CREA).
 $router->get('/universidades', [UniversidadeController::class, 'index']);
 $router->get('/universidades/{id}', [UniversidadeController::class, 'show']);
@@ -120,6 +126,11 @@ $router->post('/profissionais/{id}/validar', [ProfissionalController::class, 'va
 $router->get('/universitarios/{id}', [UniversitarioController::class, 'show']);
 $router->post('/universitarios', [UniversitarioController::class, 'store'], $write);
 $router->post('/universitarios/remover', [UniversitarioController::class, 'destroy'], $write);
+
+// RF02 - consulta (somente leitura) dos dados oficiais da empresa no CREA-AM.
+$router->get('/empresas/crea', [EmpresaController::class, 'show'], $auth);
+$router->get('/empresas/crea/quadro-tecnico', [EmpresaController::class, 'quadroTecnico'], $auth);
+$router->get('/empresas/crea/cao', [EmpresaController::class, 'cao'], $auth);
 
 // RF03 - projetos do portfolio.
 $router->get('/projetos', [ProjetoController::class, 'index'], $auth);
@@ -166,3 +177,10 @@ $router->get('/denuncias', [DenunciaController::class, 'index'], [AuthMiddleware
 $router->get('/denuncias/{id}', [DenunciaController::class, 'show'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->post('/denuncias', [DenunciaController::class, 'store'], $write);
 $router->post('/denuncias/{id}/analisar', [DenunciaController::class, 'analisar'], $adminWrite);
+
+// Cartas virtuais: criadas e visiveis apenas para o autor (contem e-mails pessoais).
+$router->get('/cartas-virtuais', [CartaVirtualController::class, 'index'], $auth);
+$router->get('/cartas-virtuais/{id}', [CartaVirtualController::class, 'show'], $auth);
+$router->post('/cartas-virtuais', [CartaVirtualController::class, 'store'], $write);
+$router->post('/cartas-virtuais/{id}/editar', [CartaVirtualController::class, 'update'], $write);
+$router->post('/cartas-virtuais/{id}/remover', [CartaVirtualController::class, 'destroy'], $write);

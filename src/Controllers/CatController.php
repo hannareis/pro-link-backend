@@ -8,12 +8,16 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Models\Cat;
 use App\Repositories\CatRepository;
+use App\Repositories\PessoaFisicaRepository;
+use App\Services\CreaApiService;
 
 // RF02/RF03 - Certidoes de Acervo Tecnico vinculadas ao portfolio.
 class CatController
 {
     public function __construct(
-        private readonly CatRepository $cats = new CatRepository()
+        private readonly CatRepository $cats = new CatRepository(),
+        private readonly PessoaFisicaRepository $pessoaFisicaRepository = new PessoaFisicaRepository(),
+        private readonly CreaApiService $creaApiService = new CreaApiService(),
     ) {
     }
 
@@ -78,14 +82,39 @@ class CatController
     }
 
     // RF02 - ADMIN_CREA altera o status da certidao (VALIDA, REJEITADA, CANCELADA...).
+    // Para marcar como VALIDA, confirma antes que o profissional responsavel
+    // existe no cadastro oficial do CREA-AM.
     public function atualizarStatus(Request $request): void
     {
         $id = (int) $request->input('id');
         $status = (string) $request->input('status_cat', Cat::STATUS_VALIDA);
 
-        if ($this->cats->findById($id) === null) {
+        $cat = $this->cats->findById($id);
+
+        if ($cat === null) {
             Response::json(['message' => 'CAT nao encontrada.'], 404);
             return;
+        }
+
+        if ($status === Cat::STATUS_VALIDA) {
+            $pessoaFisica = $this->pessoaFisicaRepository->findByUsuarioId($cat->idProfissionalResponsavel);
+
+            if ($pessoaFisica === null) {
+                Response::json(['message' => 'CPF do profissional responsável não encontrado.'], 422);
+                return;
+            }
+
+            try {
+                $confirmado = $this->creaApiService->profissionalExisteNoCrea($pessoaFisica->cpf);
+            } catch (\RuntimeException $e) {
+                Response::json(['message' => 'Não foi possível contatar a API do CREA-AM. Tente novamente.'], 502);
+                return;
+            }
+
+            if (!$confirmado) {
+                Response::json(['message' => 'Profissional responsável não confirmado pelo CREA-AM.'], 422);
+                return;
+            }
         }
 
         $this->cats->atualizarStatus($id, $status);

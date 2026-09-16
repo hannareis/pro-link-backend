@@ -11,11 +11,13 @@ class Request
     public readonly array $query;
     public readonly array $body;
     public readonly array $server;
+    public readonly array $files;
 
     // Captura o estado das superglobais no momento em que a Request e criada.
     public function __construct()
     {
         $this->query = $_GET;
+        $this->files = $_FILES;
 
         $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
 
@@ -38,5 +40,18 @@ class Request
     public function user(): ?array
     {
         return $_SESSION['user'] ?? null;
+    }
+
+    // Retorna os dados de um arquivo enviado (multipart/form-data), ou null se o
+    // campo nao foi enviado ou nenhum arquivo foi selecionado.
+    public function file(string $key): ?array
+    {
+        $file = $this->files[$key] ?? null;
+
+        if (!is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+            return null;
+        }
+
+        return $file;
     }
 }

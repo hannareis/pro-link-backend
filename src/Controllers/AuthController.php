@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controllers;
 
 use App\Core\Auth;
+use App\Core\Database;
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
@@ -19,6 +20,7 @@ use App\Repositories\UserRepository;
 use App\Repositories\PessoaFisicaRepository;
 use App\Repositories\PessoaJuridicaRepository;
 use App\Services\CreaApiService;
+use App\Services\FileUploadService;
 use App\Services\NotificacaoService;
 
 use DateTime;
@@ -26,6 +28,15 @@ use DateTime;
 // RF01 - autenticacao, cadastro e recuperacao de acesso dos 6 perfis de usuario.
 class AuthController
 {
+    // MIME real (via fileinfo) -> extensao aceita para o comprovante de matricula.
+    private const COMPROVANTE_MIMES_PERMITIDOS = [
+        'application/pdf' => 'pdf',
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+    ];
+
+    private const COMPROVANTE_TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024;
+
     public function __construct(
         private readonly UserRepository $userRepository = new UserRepository(),
         private readonly CreaApiService $creaApiService = new CreaApiService(),
@@ -131,26 +142,30 @@ class AuthController
             atualizadoEm: null
         );
 
+        $pdo = Database::connection();
+        $pdo->beginTransaction();
 
-        $userId = $this->userRepository->save($user);
+        try {
+            $userId = $this->userRepository->save($user);
 
+            if ($tipoPessoa === 'FISICA') {
+                $this->pessoaFisicaRepository->save(new PessoaFisica(
+                    idUsuario: $userId,
+                    cpf: $cpf
+                ));
+            }
 
-        if ($tipoPessoa === 'FISICA') {
-            $this->pessoaFisicaRepository->save(new PessoaFisica(
-                idUsuario: $userId,
-                cpf: $cpf
-            ));
+            $this->attachProfile($userId, $profileTypeHtml, $request);
+
+            $pdo->commit();
+        } catch (\InvalidArgumentException $e) {
+            $pdo->rollBack();
+            Response::json(['message' => $e->getMessage()], 400);
+            return;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
         }
-
-        $portfolio = new \App\Models\Portfolio(
-            id: null,
-            idUsuario: (int) $userId,
-            linksContato: [$user->email]
-        );
-
-        $this->portfolioRepository->save($portfolio);
-
-        $this->attachProfile($userId, $profileTypeHtml, $request);
 
         Response::json(['message' => 'Cadastro realizado com sucesso', 'user_id' => $userId], 201);
     }
@@ -162,7 +177,12 @@ class AuthController
 
         //TODO checar se o usuário já tem esse perfil, para não duplicar
 
-        $this->attachProfile($userId, $tipoContaAlvo, $request);
+        try {
+            $this->attachProfile($userId, $tipoContaAlvo, $request);
+        } catch (\InvalidArgumentException $e) {
+            Response::json(['message' => $e->getMessage()], 400);
+            return;
+        }
 
         Response::json(['message' => 'Perfil atualizado com sucesso'], 201);
     }
@@ -206,9 +226,22 @@ class AuthController
             curso: (string) $request->input('student_modality', ''),
             matricula: (string) $request->input('student_ra') ?: null,
             semestreAtual: (int) $request->input('semestre_atual') ?: null,
-            previsaoFormatura: $valida ? $dataRecebida : null
+            previsaoFormatura: $valida ? $dataRecebida : null,
+            comprovanteMatricula: $this->storeComprovanteMatricula($request->file('file_comprovante')),
         );
         $this->universitarioRepository->save($userUniversitario);
+    }
+
+    // Retorna null se nao houver arquivo (campo opcional); lanca InvalidArgumentException
+    // se um arquivo foi enviado mas e invalido, para o cadastro ser bloqueado com 400.
+    private function storeComprovanteMatricula(?array $file): ?string
+    {
+        $uploadService = new FileUploadService(
+            self::COMPROVANTE_MIMES_PERMITIDOS,
+            self::COMPROVANTE_TAMANHO_MAXIMO_BYTES
+        );
+
+        return $uploadService->store($file, 'comprovantes_matricula')['caminho_armazenamento'] ?? null;
     }
 
     private function createPessoaJuridicaPerfil(int $userId, Request $request): void

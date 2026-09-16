@@ -28,6 +28,13 @@ CREATE TABLE usuarios (
         'ADMIN_CREA'
     ) NOT NULL DEFAULT 'USUARIO',
 
+    tipo_conta ENUM(
+        'COMUM',
+        'ESTUDANTE',
+        'PROFISSIONAL',
+        'EMPRESA'
+    ) NOT NULL DEFAULT 'COMUM',
+
     nome VARCHAR(150) NOT NULL,
 
     senha_hash VARCHAR(255) NOT NULL,
@@ -52,6 +59,7 @@ CREATE TABLE usuarios (
 
     INDEX idx_usuarios_tipo_pessoa (tipo_pessoa),
     INDEX idx_usuarios_perfil_acesso (perfil_acesso),
+    INDEX idx_usuarios_tipo_conta (tipo_conta),
     INDEX idx_usuarios_conta_ativa (conta_ativa),
     INDEX idx_usuarios_nome (nome)
 ) ENGINE=InnoDB;
@@ -1284,4 +1292,57 @@ CREATE TABLE notificacoes (
         id_usuario,
         lida
     )
+) ENGINE=InnoDB;
+
+
+-- ============================================================
+-- CARTAS VIRTUAIS
+-- ============================================================
+
+CREATE TABLE cartas_virtuais (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    id_usuario INT UNSIGNED NOT NULL,
+
+    id_demanda INT UNSIGNED NULL,
+
+    titulo VARCHAR(150) NOT NULL,
+
+    legenda TEXT,
+
+    remetente_email VARCHAR(254) NOT NULL,
+
+    destinatario_email VARCHAR(254) NOT NULL,
+
+    -- Arquivo externo (anexo) opcional vinculado a carta.
+    nome_arquivo VARCHAR(255),
+
+    nome_armazenado VARCHAR(255),
+
+    tipo_mime VARCHAR(100),
+
+    tamanho_arquivo BIGINT UNSIGNED,
+
+    caminho_armazenamento VARCHAR(500),
+
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    atualizado_em DATETIME NOT NULL
+        DEFAULT CURRENT_TIMESTAMP
+        ON UPDATE CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_carta_virtual_usuario
+        FOREIGN KEY (id_usuario)
+        REFERENCES usuarios(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    CONSTRAINT fk_carta_virtual_demanda
+        FOREIGN KEY (id_demanda)
+        REFERENCES demandas(id)
+        ON DELETE SET NULL
+        ON UPDATE CASCADE,
+
+    INDEX idx_cartas_virtuais_usuario (id_usuario),
+    INDEX idx_cartas_virtuais_demanda (id_demanda)
 ) ENGINE=InnoDB;

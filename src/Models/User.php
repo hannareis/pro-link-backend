@@ -18,6 +18,12 @@ class User
     // Alias retrocompativel com rotas/middleware que ainda usam PERFIL_ADMIN.
     public const PERFIL_ADMIN = self::PERFIL_ADMIN_CREA;
 
+    // Coluna `tipo_conta`: qual perfil de uso o usuario tem na plataforma.
+    public const TIPO_CONTA_COMUM = 'COMUM';
+    public const TIPO_CONTA_ESTUDANTE = 'ESTUDANTE';
+    public const TIPO_CONTA_PROFISSIONAL = 'PROFISSIONAL';
+    public const TIPO_CONTA_EMPRESA = 'EMPRESA';
+
     public function __construct(
         public ?int $id = null,
         public string $nome = '',
@@ -26,6 +32,7 @@ class User
         public string $telefone = '',
         public string $tipoPessoa = self::TIPO_PESSOA_FISICA,
         public string $perfilAcesso = self::PERFIL_USUARIO,
+        public string $tipoConta = self::TIPO_CONTA_COMUM,
         public bool $contaAtiva = true,
         public ?string $ultimoLoginEm = null,
         public int $tentativasLogin = 0,
@@ -44,5 +51,10 @@ class User
     public function isAdmin(): bool
     {
         return $this->perfilAcesso === self::PERFIL_ADMIN_CREA;
+    }
+
+    public function isProfissional(): bool
+    {
+        return $this->tipoConta === self::TIPO_CONTA_PROFISSIONAL;
     }
 }

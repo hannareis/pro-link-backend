@@ -7,6 +7,7 @@ namespace App\Controllers;
 use App\Core\Request;
 use App\Core\Response;
 use App\Models\Profissional;
+use App\Repositories\PessoaFisicaRepository;
 use App\Repositories\ProfissionalRepository;
 use App\Services\CreaApiService;
 
@@ -16,7 +17,8 @@ class ProfissionalController
 {
     public function __construct(
         private readonly ProfissionalRepository $profissionais = new ProfissionalRepository(),
-        private readonly CreaApiService $creaApiService = new CreaApiService()
+        private readonly CreaApiService $creaApiService = new CreaApiService(),
+        private readonly PessoaFisicaRepository $pessoaFisicaRepository = new PessoaFisicaRepository(),
     ) {
     }
 
@@ -87,7 +89,9 @@ class ProfissionalController
         Response::json(['message' => 'Especialidades atualizadas.']);
     }
 
-    // RF02 - ADMIN_CREA valida o registro consultando a API oficial do CREA-AM.
+    // RF02 - ADMIN_CREA valida o registro consultando a API oficial do CREA-AM:
+    // busca o profissional pelo CPF (pessoa_fisica) e so marca como validado se a
+    // API confirmar o cadastro.
     public function validar(Request $request): void
     {
         $usuarioId = (int) $request->input('id');
@@ -98,8 +102,32 @@ class ProfissionalController
             return;
         }
 
+        $pessoaFisica = $this->pessoaFisicaRepository->findByUsuarioId($usuarioId);
+
+        if ($pessoaFisica === null) {
+            Response::json(['message' => 'CPF não encontrado para este usuário.'], 422);
+            return;
+        }
+
+        try {
+            $resposta = $this->creaApiService->buscarProfissionalPorCpf($pessoaFisica->cpf);
+        } catch (\RuntimeException $e) {
+            Response::json(['message' => 'Não foi possível contatar a API do CREA-AM. Tente novamente.'], 502);
+            return;
+        }
+
+        if (in_array($resposta['status'], [401, 403], true)) {
+            Response::json(['message' => 'Falha de autenticação com a API do CREA-AM. Verifique o token configurado.'], 502);
+            return;
+        }
+
+        if ($resposta['status'] !== 200 || empty($resposta['body'])) {
+            Response::json(['message' => 'Registro não encontrado ou não confirmado pelo CREA-AM.'], 422);
+            return;
+        }
+
         $this->profissionais->marcarValidado($usuarioId);
 
-        Response::json(['message' => 'Registro validado pelo CREA.']);
+        Response::json(['message' => 'Registro validado pelo CREA.', 'crea' => $resposta['body']]);
     }
 }

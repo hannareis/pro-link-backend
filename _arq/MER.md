@@ -12,8 +12,6 @@ erDiagram
     SIS_USUARIOS ||--o{ PRO_PORTFOLIOS : "valida como RT (por_responsavel_tecnico_usu_id)"
     SIS_USUARIOS ||--o{ PRO_DEMANDAS : "publica (dem_usu_id)"
     SIS_USUARIOS ||--o{ PRO_ARTS_CATS : "possui (art_usu_id)"
-    SIS_USUARIOS ||--o{ PRO_CARTAS_VIRTUAIS : "envia (car_remetente_usu_id)"
-    SIS_USUARIOS ||--o{ PRO_CARTAS_VIRTUAIS : "recebe (car_destinatario_usu_id)"
     SIS_USUARIOS ||--o{ SIS_AUDITORIA : "gera (aud_usu_id)"
 
     SIS_USUARIOS {
@@ -38,13 +36,6 @@ erDiagram
         varchar dem_titulo
         text dem_escopo
         char dem_status
-    }
-    PRO_CARTAS_VIRTUAIS {
-        int car_id PK
-        int car_remetente_usu_id FK
-        int car_destinatario_usu_id FK
-        enum car_status_envio
-        char car_status
     }
     PRO_ARTS_CATS {
         int art_id PK

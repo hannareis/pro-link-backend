@@ -42,7 +42,13 @@ return [
         'token' => $_ENV['CREA_API_TOKEN'] ?? '',
     ],
 
-    // RF07 - servidor SMTP para notificacoes e check-out das Cartas Virtuais.
+    // Item 4.3 da proposta - portal de dados abertos do governo federal (CKAN), usado
+    // apenas como complemento auditado a API oficial do CREA-AM (nao a substitui).
+    'dados_publicos' => [
+        'base_url' => $_ENV['DADOS_PUBLICOS_BASE_URL'] ?? 'https://dados.gov.br/api/3',
+    ],
+
+    // RF07 - servidor SMTP para notificacoes da plataforma.
     'mail' => [
         'host' => $_ENV['MAIL_HOST'] ?? '',
         'port' => (int) ($_ENV['MAIL_PORT'] ?? 587),

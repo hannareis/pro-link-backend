@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Controllers\AdminController;
 use App\Controllers\ArtController;
 use App\Controllers\AuthController;
-use App\Controllers\CartaVirtualController;
 use App\Controllers\CatController;
 use App\Controllers\CompetenciaController;
 use App\Controllers\DemandaController;
@@ -14,6 +13,7 @@ use App\Controllers\DenunciaController;
 use App\Controllers\EspecialidadeController;
 use App\Controllers\ExperienciaController;
 use App\Controllers\FeedController;
+use App\Controllers\NotificacaoController;
 use App\Controllers\PortfolioController;
 use App\Controllers\PostAnexoController;
 use App\Controllers\ProfissionalController;
@@ -42,8 +42,11 @@ $router->post('/reset-password', [AuthController::class, 'resetPassword'], [Sani
 $router->get('/feed', [FeedController::class, 'index'], [AuthMiddleware::class]);
 $router->post('/feed', [FeedController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
-// RF01/RF03 - visualizacao publica de perfil; edicao/exclusao exige autenticacao.
-$router->get('/usuarios', [UserController::class, 'index'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
+// RF07 - notificacoes internas do painel do usuario autenticado.
+$router->get('/notificacoes', [NotificacaoController::class, 'index'], [AuthMiddleware::class]);
+$router->post('/notificacoes/marcar-lida', [NotificacaoController::class, 'markAsRead'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+
+// RF01/RF03 - visualizacao publica de perfil; edicao exige autenticacao.
 $router->get('/perfil/{id}', [UserController::class, 'show']);
 $router->post('/perfil', [UserController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/perfil/remover', [UserController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
@@ -63,10 +66,6 @@ $router->get('/demandas/{id}', [DemandaController::class, 'show'], [AuthMiddlewa
 $router->post('/demandas/{id}/editar', [DemandaController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/demandas/{id}/remover', [DemandaController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 
-// RF05 - fluxo de Cartas Virtuais: check-in (redige e valida) e check-out (envia por e-mail).
-$router->post('/cartas-virtuais/checkin', [CartaVirtualController::class, 'checkin'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
-$router->post('/cartas-virtuais/{id}/checkout', [CartaVirtualController::class, 'checkout'], [AuthMiddleware::class, CsrfMiddleware::class]);
-
 // RF05 - comunicação inicial entre empresas, instituições e profissionais através da criação de posts.
 $router->post('/posts', [PostController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/edit', [PostController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
@@ -79,6 +78,7 @@ $router->get('/admin/usuarios', [AdminController::class, 'manageUsers'], [AuthMi
 $router->post('/admin/usuarios/status', [AdminController::class, 'toggleUserStatus'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->get('/admin/moderacao', [AdminController::class, 'moderation'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->get('/admin/auditoria', [AdminController::class, 'auditLogs'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
+$router->get('/admin/dados-publicos', [AdminController::class, 'dadosPublicos'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 
 // ============================================================
 // Rotas das entidades do estrutura.sql

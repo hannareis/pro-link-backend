@@ -37,15 +37,22 @@ class PortfolioController
     }
 
     // Exibe o portfolio com suas abas: resumo, competencias, ARTs/CATs, projetos, experiencias.
+    // "/portfolio/{id}" (rota publica) exibe o portfolio de QUALQUER usuario pelo id da
+    // URL; "/portfolio/me" (sem id na rota) exibe o do usuario autenticado via sessao.
     public function show(Request $request): void
     {
-        //$portfolio = $this->portfolios->findById((int) $request->input('id'));
-        $userId = (int) $request->user()['id'];
-        $portfolio = $this->portfolios->findByUsuarioId($userId);
+        $idParam = $request->input('id');
+        $userId = $idParam !== null ? (int) $idParam : (int) ($request->user()['id'] ?? 0);
 
+        if ($userId === 0) {
+            Response::json(['message' => 'Sessão inválida.'], 401);
+            return;
+        }
+
+        $portfolio = $this->portfolios->findByUsuarioId($userId);
         $user = $this->usuarios->findById($userId);
 
-        if ($portfolio === null) {
+        if ($portfolio === null || $user === null) {
             Response::json(['message' => 'Portfolio nao encontrado.'], 404);
             return;
         }
@@ -54,6 +61,16 @@ class PortfolioController
         $profissional = $this->profissionais->findByUsuarioId($idUsuario);
         $pf = $this->pessoasFisicas->findByUsuarioId($idUsuario);
         $empresa = $this->empresas->findByUsuarioId($idUsuario);
+
+        // Empresa e sempre publica; pessoa fisica respeita a preferencia de
+        // visibilidade (LGPD) - mesma regra usada em UserController::show.
+        $ehProprioUsuario = $idUsuario === auth_id();
+        $ehVisivelPublicamente = $empresa !== null || ($pf?->visibilidadePublica ?? true);
+
+        if (!$ehProprioUsuario && !$ehVisivelPublicamente) {
+            Response::json(['message' => 'Perfil não disponível.'], 403);
+            return;
+        }
 
         Response::json([
             'usuario' => [

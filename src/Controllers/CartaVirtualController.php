@@ -9,7 +9,9 @@ use App\Core\Response;
 use App\Helpers\Validator;
 use App\Models\CartaVirtual;
 use App\Repositories\CartaVirtualRepository;
+use App\Repositories\UserRepository;
 use App\Services\FileUploadService;
+use App\Services\NotificacaoService;
 
 // Carta virtual: certificado/carta enviado pelo usuario autenticado a um
 // destinatario externo por e-mail, opcionalmente vinculada a uma demanda e com
@@ -32,6 +34,9 @@ class CartaVirtualController
             self::ARQUIVO_MIMES_PERMITIDOS,
             self::ARQUIVO_TAMANHO_MAXIMO_BYTES
         ),
+        // Mesmo servico/SMTP usado por AuthController::recoverPassword.
+        private readonly NotificacaoService $notificacaoService = new NotificacaoService(),
+        private readonly UserRepository $users = new UserRepository(),
     ) {
     }
 
@@ -88,8 +93,47 @@ class CartaVirtualController
 
         $carta = $this->fromRequest($request, $titulo, $remetenteEmail, $destinatarioEmail, $arquivo);
         $id = $this->cartasVirtuais->save($carta);
+        $carta->id = $id;
 
-        Response::json(['message' => 'Carta virtual criada.', 'id' => $id], 201);
+        $emailEnviado = $this->enviarCartaPorEmail($carta);
+        $mensagem = $emailEnviado
+            ? 'Carta virtual criada e enviada por e-mail.'
+            : 'Carta virtual criada, mas não foi possível enviar o e-mail ao destinatário.';
+
+        Response::json(['message' => $mensagem, 'id' => $id, 'email_enviado' => $emailEnviado], 201);
+    }
+
+    // Envia a carta virtual por e-mail ao destinatario (com o anexo, se houver), usando o
+    // mesmo NotificacaoService/SMTP da recuperacao de senha (AuthController::recoverPassword).
+    // Falha de envio nao desfaz a criacao da carta - ela ja foi persistida e continua
+    // visivel para o autor mesmo que o SMTP esteja fora do ar.
+    private function enviarCartaPorEmail(CartaVirtual $carta): bool
+    {
+        $remetente = $this->users->findById($carta->idUsuario);
+        $nomeRemetente = $remetente?->nome ?? $carta->remetenteEmail;
+
+        $corpo = sprintf(
+            '<p>Você recebeu uma carta virtual de <strong>%s</strong> (%s) através do Pro-Link.</p><hr>'
+                . '<h3>%s</h3><div>%s</div>',
+            htmlspecialchars($nomeRemetente),
+            htmlspecialchars($carta->remetenteEmail),
+            htmlspecialchars($carta->titulo),
+            $carta->legenda ?? ''
+        );
+
+        $anexoCaminho = $carta->caminhoArmazenamento !== null
+            ? PATH_PUBLIC . '/' . $carta->caminhoArmazenamento
+            : null;
+
+        return $this->notificacaoService->enviarEmail(
+            $carta->destinatarioEmail,
+            $carta->titulo,
+            $corpo,
+            $anexoCaminho,
+            $carta->nomeArquivo,
+            $carta->remetenteEmail,
+            $nomeRemetente
+        );
     }
 
     // Atualiza uma carta virtual do usuario autenticado. Um novo arquivo (campo

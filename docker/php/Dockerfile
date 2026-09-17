@@ -4,6 +4,10 @@ FROM php:8.2-fpm-alpine
 RUN apk add --no-cache curl-dev \
     && docker-php-ext-install pdo pdo_mysql curl
 
+# Eleva upload_max_filesize/post_max_size acima do padrao da imagem (2M/8M) para
+# acomodar os uploads de ate 5MB que a aplicacao ja aceita (ver docker/php/uploads.ini).
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
+
 WORKDIR /var/www/html
 
 # Copia o binario do Composer para dentro da imagem.

@@ -549,6 +549,39 @@ CREATE TABLE projeto_competencias (
 
 
 -- ============================================================
+-- GALERIA DE IMAGENS DOS PROJETOS
+-- ============================================================
+
+CREATE TABLE projeto_imagens (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+
+    id_projeto INT UNSIGNED NOT NULL,
+
+    nome_arquivo VARCHAR(255) NOT NULL,
+
+    nome_armazenado VARCHAR(255),
+
+    tipo_mime VARCHAR(100),
+
+    tamanho BIGINT UNSIGNED,
+
+    caminho_armazenamento VARCHAR(500) NOT NULL,
+
+    ordem SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+
+    criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_projeto_imagens_projeto
+        FOREIGN KEY (id_projeto)
+        REFERENCES projetos(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE,
+
+    INDEX idx_projeto_imagens_projeto (id_projeto)
+) ENGINE=InnoDB;
+
+
+-- ============================================================
 -- EXPERIÊNCIAS
 -- ============================================================
 

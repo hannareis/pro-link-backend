@@ -10,6 +10,11 @@ use App\Models\Projeto;
 // SQL sobre a tabela `projetos` e o vinculo `projeto_competencias`.
 class ProjetoRepository
 {
+    public function __construct(
+        private readonly ProjetoImagemRepository $imagens = new ProjetoImagemRepository(),
+    ) {
+    }
+
     public function findById(int $id): ?Projeto
     {
         $stmt = Database::connection()->prepare('SELECT * FROM projetos WHERE id = :id LIMIT 1');
@@ -22,6 +27,7 @@ class ProjetoRepository
 
         $projeto = $this->hydrate($row);
         $projeto->competencias = $this->competenciasDoProjeto($id);
+        $projeto->imagens = $this->imagensDoProjeto($id);
 
         return $projeto;
     }
@@ -33,7 +39,12 @@ class ProjetoRepository
         );
         $stmt->execute(['id' => $idPortfolio]);
 
-        return array_map($this->hydrate(...), $stmt->fetchAll());
+        $projetos = array_map($this->hydrate(...), $stmt->fetchAll());
+        foreach ($projetos as $projeto) {
+            $projeto->imagens = $this->imagensDoProjeto((int) $projeto->id);
+        }
+
+        return $projetos;
     }
 
     public function save(Projeto $p): int
@@ -97,6 +108,17 @@ class ProjetoRepository
         $stmt->execute(['id' => $idProjeto]);
 
         return $stmt->fetchAll();
+    }
+
+    // ----- projeto_imagens ----------------------------------------------------------
+
+    // Retorna as URLs absolutas da galeria do projeto (ver ProjetoImagemRepository).
+    public function imagensDoProjeto(int $idProjeto): array
+    {
+        return array_map(
+            static fn ($imagem) => rtrim((string) config('app.url'), '/') . '/' . $imagem->caminhoArmazenamento,
+            $this->imagens->listByProjeto($idProjeto)
+        );
     }
 
     public function sincronizarCompetencias(int $idProjeto, array $competenciaIds): void

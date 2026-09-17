@@ -58,4 +58,39 @@ class Request
 
         return $file;
     }
+
+    // Normaliza um campo de upload multiplo (ex: name="imagens[]" no FormData) em uma
+    // lista de arrays individuais, cada um no mesmo formato que file() retorna - o PHP
+    // guarda $_FILES['imagens'] como um unico array com sub-arrays paralelos
+    // (name[], type[], tmp_name[], error[], size[]) em vez de uma lista por arquivo.
+    // Campos sem arquivo (ou so um arquivo, sem "[]") retornam lista vazia/unitaria.
+    public function files(string $key): array
+    {
+        $bucket = $this->files[$key] ?? null;
+
+        if (!is_array($bucket) || !isset($bucket['name'])) {
+            return [];
+        }
+
+        if (!is_array($bucket['name'])) {
+            return ($bucket['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE ? [] : [$bucket];
+        }
+
+        $arquivos = [];
+        foreach ($bucket['name'] as $indice => $nome) {
+            if (($bucket['error'][$indice] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+
+            $arquivos[] = [
+                'name' => $bucket['name'][$indice],
+                'type' => $bucket['type'][$indice],
+                'tmp_name' => $bucket['tmp_name'][$indice],
+                'error' => $bucket['error'][$indice],
+                'size' => $bucket['size'][$indice],
+            ];
+        }
+
+        return $arquivos;
+    }
 }

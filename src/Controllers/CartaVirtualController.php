@@ -9,6 +9,7 @@ use App\Core\Response;
 use App\Helpers\Validator;
 use App\Models\CartaVirtual;
 use App\Repositories\CartaVirtualRepository;
+use App\Repositories\DemandaRepository;
 use App\Repositories\UserRepository;
 use App\Services\FileUploadService;
 use App\Services\NotificacaoService;
@@ -37,6 +38,7 @@ class CartaVirtualController
         // Mesmo servico/SMTP usado por AuthController::recoverPassword.
         private readonly NotificacaoService $notificacaoService = new NotificacaoService(),
         private readonly UserRepository $users = new UserRepository(),
+        private readonly DemandaRepository $demandas = new DemandaRepository(),
     ) {
     }
 
@@ -121,6 +123,10 @@ class CartaVirtualController
             $carta->legenda ?? ''
         );
 
+        if ($carta->idDemanda !== null) {
+            $corpo .= $this->blocoDemandaParaEmail($carta->idDemanda);
+        }
+
         $anexoCaminho = $carta->caminhoArmazenamento !== null
             ? PATH_PUBLIC . '/' . $carta->caminhoArmazenamento
             : null;
@@ -133,6 +139,38 @@ class CartaVirtualController
             $carta->nomeArquivo,
             $carta->remetenteEmail,
             $nomeRemetente
+        );
+    }
+
+    // Monta o bloco HTML com os dados da demanda vinculada (titulo, descricao, area,
+    // tipo, modalidade e localizacao), inserido no corpo do e-mail da carta virtual.
+    // Demanda inexistente/removida nao quebra o envio - a carta segue sem esse bloco.
+    private function blocoDemandaParaEmail(int $idDemanda): string
+    {
+        $demanda = $this->demandas->findById($idDemanda);
+
+        if ($demanda === null) {
+            return '';
+        }
+
+        $humanizar = fn (string $valor): string => ucwords(strtolower(str_replace('_', ' ', $valor)));
+        $localizacao = trim($demanda->cidade . ($demanda->uf !== '' ? '/' . $demanda->uf : ''));
+
+        return sprintf(
+            '<hr><h4>Demanda vinculada: %s</h4>'
+                . '<p>%s</p>'
+                . '<ul>'
+                . '<li><strong>Área:</strong> %s</li>'
+                . '<li><strong>Tipo:</strong> %s</li>'
+                . '<li><strong>Modalidade:</strong> %s</li>'
+                . '%s'
+                . '</ul>',
+            htmlspecialchars($demanda->titulo),
+            nl2br(htmlspecialchars($demanda->descricao)),
+            htmlspecialchars($demanda->area),
+            htmlspecialchars($humanizar($demanda->tipo)),
+            htmlspecialchars($humanizar($demanda->modalidade)),
+            $localizacao !== '' ? '<li><strong>Localização:</strong> ' . htmlspecialchars($localizacao) . '</li>' : ''
         );
     }
 

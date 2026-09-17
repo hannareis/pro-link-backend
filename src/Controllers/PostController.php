@@ -21,6 +21,19 @@ class PostController
     ) {
     }
 
+    public function index(Request $request): void
+    {
+        $userId = $request->input('usuario_id');
+        
+        if ($userId) {
+            $posts = $this->postRepository->findByUserId((int) $userId);
+        } else {
+            $posts = $this->postRepository->all();
+        }
+
+        Response::json(['data' => $posts]);
+    }
+
     // [IA]: Adequação para obtenção do usuário via auth_id() e envio de resposta JSON com status 201.
     public function store(Request $request): void
     {
@@ -30,7 +43,7 @@ class PostController
             userId: $userId,
             conteudo: (string) $request->input('conteudo', ''),
             titulo: (string) $request->input('titulo', ''),
-            status: (string) $request->input('status', 'PUBLICO'),
+            status: (string) $request->input('status', Post::STATUS_PUBLICO),
         );
 
         $id = $this->postRepository->save($post);
@@ -88,9 +101,18 @@ class PostController
     // [IA]: Ajuste da assinatura para retorno void e envio de confirmação de exclusão em formato JSON.
     public function destroy(Request $request): void
     {
-        $this->postRepository->delete(
-            $this->postRepository->findById((int) $request->input('id'))
-        );
+        $post = $this->postRepository->findById((int) $request->input('id'));
+        if ($post === null) {
+            Response::json(['message' => 'Post nao encontrado.'], 404);
+            return;
+        }
+
+        if (auth_id() !== $post->userId) {
+            Response::json(['message' => 'Sem permissao para deletar este post.'], 403);
+            return;
+        }
+
+        $this->postRepository->delete($post);
 
         Response::json(['message' => 'Post removido.']);
     }
@@ -99,7 +121,7 @@ class PostController
     public function likePost(Request $request): void
     {
         $userId = auth_id();
-        $postId = (int) $request->input('id_post');
+        $postId = (int) $request->input('id');
 
         $curtida = $this->curtidaPostRepository->findByUsuarioEPost($userId, $postId);
 

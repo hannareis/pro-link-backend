@@ -19,9 +19,10 @@ class ComentarioController
     }
 
     // [IA]: Implementação da consulta de comentários vinculados a um post com retorno em formato JSON.
+    // "id" vem da rota "/posts/{id}/comments"; "id_post" fica como alias para chamadas diretas.
     public function index(Request $request): void
     {
-        $idPost = (int) $request->input('id_post');
+        $idPost = (int) ($request->input('id') ?? $request->input('id_post'));
 
         Response::json(['data' => $this->comentarioRepository->listById($idPost)]);
     }
@@ -40,15 +41,22 @@ class ComentarioController
     }
 
     // [IA]: Adequação para identificação do autor via auth_id() e emissão de resposta JSON com status 201.
+    // "id" vem da rota "/posts/{id}/comments"; "id_post" fica como alias para chamadas diretas.
     public function store(Request $request): void
     {
         $userId = auth_id();
+        $conteudo = trim((string) $request->input('conteudo', ''));
+
+        if ($conteudo === '') {
+            Response::json(['message' => 'O comentário não pode ser vazio.'], 400);
+            return;
+        }
 
         $comentario = new Comentario(
             userId: $userId,
-            conteudo: (string) $request->input('conteudo', ''),
-            status: (string) $request->input('status', ''),
-            postId: (int) $request->input('id_post'),
+            conteudo: $conteudo,
+            status: (string) $request->input('status', Comentario::STATUS_PUBLICO),
+            postId: (int) ($request->input('id') ?? $request->input('id_post')),
             comentarioPaiId: $request->input('id_comentario') !== null
                 ? (int) $request->input('id_comentario')
                 : null,
@@ -66,7 +74,7 @@ class ComentarioController
 
         $comentario = $this->comentarioRepository->findById($id);
 
-        if ($comentario === null) {
+        if ($comentario === null || $comentario->userId !== auth_id()) {
             Response::json(['message' => 'Comentario nao encontrado.'], 404);
             return;
         }
@@ -81,9 +89,14 @@ class ComentarioController
     // [IA]: Ajuste da assinatura para tipo void e envio de confirmação de exclusão em formato JSON.
     public function destroy(Request $request): void
     {
-        $this->comentarioRepository->delete(
-            $this->comentarioRepository->findById((int) $request->input('id'))
-        );
+        $comentario = $this->comentarioRepository->findById((int) $request->input('id'));
+
+        if ($comentario === null || $comentario->userId !== auth_id()) {
+            Response::json(['message' => 'Comentario nao encontrado.'], 404);
+            return;
+        }
+
+        $this->comentarioRepository->delete($comentario);
 
         Response::json(['message' => 'Comentario removido.']);
     }

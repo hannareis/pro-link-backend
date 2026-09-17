@@ -16,6 +16,11 @@ COPY . .
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
 # Garante que o processo do PHP-FPM (www-data) possa escrever em storage/ e uploads/.
+# So tem efeito em builds sem bind mount (ex: producao/CI) - o docker-compose.yml de
+# desenvolvimento monta "./:/var/www/html" por cima disso, e o dono/permissao do host
+# (Windows/WSL) prevalece sobre o que foi definido aqui na imagem.
 RUN chown -R www-data:www-data /var/www/html/storage /var/www/html/public/uploads
 
-CMD ["php-fpm"]
+# Reaplica a permissao em todo start do container (nao so no build), para cobrir o caso
+# do bind mount de desenvolvimento sobrescrever o dono definido acima.
+CMD ["sh", "-c", "chmod -R 777 /var/www/html/storage /var/www/html/public/uploads && exec php-fpm"]

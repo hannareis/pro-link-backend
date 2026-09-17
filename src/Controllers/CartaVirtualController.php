@@ -9,7 +9,9 @@ use App\Core\Response;
 use App\Helpers\Validator;
 use App\Models\CartaVirtual;
 use App\Repositories\CartaVirtualRepository;
+use App\Repositories\UserRepository;
 use App\Services\FileUploadService;
+use App\Services\NotificacaoService;
 
 // Carta virtual: certificado/carta enviado pelo usuario autenticado a um
 // destinatario externo por e-mail, opcionalmente vinculada a uma demanda e com
@@ -32,6 +34,9 @@ class CartaVirtualController
             self::ARQUIVO_MIMES_PERMITIDOS,
             self::ARQUIVO_TAMANHO_MAXIMO_BYTES
         ),
+        // Mesmo servico/SMTP usado por AuthController::recoverPassword.
+        private readonly NotificacaoService $notificacaoService = new NotificacaoService(),
+        private readonly UserRepository $users = new UserRepository(),
     ) {
     }
 
@@ -58,7 +63,9 @@ class CartaVirtualController
     public function store(Request $request): void
     {
         $titulo = trim((string) $request->input('titulo', ''));
-        $remetenteEmail = trim((string) $request->input('remetente_email', ''));
+        // O remetente e sempre o proprio usuario autenticado - a SPA nao pede esse campo,
+        // evitando depender de um valor que o cliente teria que preencher manualmente.
+        $remetenteEmail = trim((string) $request->input('remetente_email', auth_user()['email'] ?? ''));
         $destinatarioEmail = trim((string) $request->input('destinatario_email', ''));
 
         if ($titulo === '' || $remetenteEmail === '' || $destinatarioEmail === '') {
@@ -74,14 +81,59 @@ class CartaVirtualController
         try {
             $arquivo = $this->fileUploadService->store($request->file('arquivo'), 'cartas_virtuais');
         } catch (\InvalidArgumentException $e) {
+            // Arquivo em si invalido (tipo/tamanho/erro de upload) - erro do cliente.
             Response::json(['message' => $e->getMessage()], 400);
+            return;
+        } catch (\RuntimeException $e) {
+            // Falha de I/O ao salvar (ex: permissao do diretorio) - erro do servidor,
+            // mas o usuario precisa de feedback em vez de um erro fatal sem resposta JSON.
+            Response::json(['message' => $e->getMessage()], 500);
             return;
         }
 
         $carta = $this->fromRequest($request, $titulo, $remetenteEmail, $destinatarioEmail, $arquivo);
         $id = $this->cartasVirtuais->save($carta);
+        $carta->id = $id;
 
-        Response::json(['message' => 'Carta virtual criada.', 'id' => $id], 201);
+        $emailEnviado = $this->enviarCartaPorEmail($carta);
+        $mensagem = $emailEnviado
+            ? 'Carta virtual criada e enviada por e-mail.'
+            : 'Carta virtual criada, mas não foi possível enviar o e-mail ao destinatário.';
+
+        Response::json(['message' => $mensagem, 'id' => $id, 'email_enviado' => $emailEnviado], 201);
+    }
+
+    // Envia a carta virtual por e-mail ao destinatario (com o anexo, se houver), usando o
+    // mesmo NotificacaoService/SMTP da recuperacao de senha (AuthController::recoverPassword).
+    // Falha de envio nao desfaz a criacao da carta - ela ja foi persistida e continua
+    // visivel para o autor mesmo que o SMTP esteja fora do ar.
+    private function enviarCartaPorEmail(CartaVirtual $carta): bool
+    {
+        $remetente = $this->users->findById($carta->idUsuario);
+        $nomeRemetente = $remetente?->nome ?? $carta->remetenteEmail;
+
+        $corpo = sprintf(
+            '<p>Você recebeu uma carta virtual de <strong>%s</strong> (%s) através do Pro-Link.</p><hr>'
+                . '<h3>%s</h3><div>%s</div>',
+            htmlspecialchars($nomeRemetente),
+            htmlspecialchars($carta->remetenteEmail),
+            htmlspecialchars($carta->titulo),
+            $carta->legenda ?? ''
+        );
+
+        $anexoCaminho = $carta->caminhoArmazenamento !== null
+            ? PATH_PUBLIC . '/' . $carta->caminhoArmazenamento
+            : null;
+
+        return $this->notificacaoService->enviarEmail(
+            $carta->destinatarioEmail,
+            $carta->titulo,
+            $corpo,
+            $anexoCaminho,
+            $carta->nomeArquivo,
+            $carta->remetenteEmail,
+            $nomeRemetente
+        );
     }
 
     // Atualiza uma carta virtual do usuario autenticado. Um novo arquivo (campo
@@ -113,6 +165,9 @@ class CartaVirtualController
             $arquivo = $this->fileUploadService->store($request->file('arquivo'), 'cartas_virtuais');
         } catch (\InvalidArgumentException $e) {
             Response::json(['message' => $e->getMessage()], 400);
+            return;
+        } catch (\RuntimeException $e) {
+            Response::json(['message' => $e->getMessage()], 500);
             return;
         }
 

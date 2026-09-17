@@ -161,6 +161,10 @@ class UserRepository
     }
 
     // Converte uma linha da tabela `usuarios` em um objeto User tipado.
+    // estado/cidade usam fallback: bancos criados antes dessas colunas existirem em
+    // estrutura.sql (rodado uma unica vez por docker-entrypoint-initdb.d) nao as tem
+    // ate um ALTER TABLE manual - sem o fallback, o "Undefined array key" quebra a
+    // resposta HTTP (warning vira output antes do header(), ver Response::json).
     private function hydrate(array $row): User
     {
         return new User(
@@ -169,8 +173,8 @@ class UserRepository
             email: (string) $row['email'],
             senhaHash: (string) $row['senha_hash'],
             telefone: (string) $row['telefone'],
-            estado: (string) $row['estado'],
-            cidade: (string) $row['cidade'],
+            estado: (string) ($row['estado'] ?? ''),
+            cidade: (string) ($row['cidade'] ?? ''),
             tipoPessoa: (string) $row['tipo_pessoa'],
             perfilAcesso: (string) $row['perfil_acesso'],
             tipoConta: (string) $row['tipo_conta'],

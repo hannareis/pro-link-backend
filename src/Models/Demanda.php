@@ -9,6 +9,9 @@ class Demanda
 {
     public const TIPO_ESTAGIO = 'ESTAGIO';
     public const TIPO_PROJETO = 'PROJETO';
+    public const TIPO_CONSULTORIA = 'CONSULTORIA';
+    public const TIPO_ART = 'ART';
+    public const TIPO_PERICIA = 'PERICIA';
     public const TIPO_MENTORIA = 'MENTORIA';
     public const TIPO_PESQUISA = 'PESQUISA';
     public const TIPO_VOLUNTARIADO = 'VOLUNTARIADO';
@@ -28,7 +31,7 @@ class Demanda
         public string $titulo = '',
         public string $descricao = '',
         public string $area = '',
-        public string $tipo = self::TIPO_ESTAGIO,
+        public string $tipo = self::TIPO_PROJETO,
         public string $cidade = '',
         public string $uf = '',
         public string $modalidade = self::MODALIDADE_PRESENCIAL,
@@ -39,6 +42,10 @@ class Demanda
         public ?string $atualizadoEm = null,
         // Areas de atuacao sugeridas pelo Agente de Recomendacao (NLP), sujeitas a aprovacao humana.
         public array $areasSugeridas = [],
+        // Campos calculados por DemandaRepository::buscarComFiltros() para exibicao no
+        // card/detalhe da busca (nao existem como coluna propria).
+        public ?string $company = null,
+        public int $interessados = 0,
     ) {
     }
 }

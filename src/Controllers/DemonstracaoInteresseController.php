@@ -23,7 +23,7 @@ class DemonstracaoInteresseController
     // Interesses de uma demanda (?id_demanda=) para a empresa dona da vaga.
     public function porDemanda(Request $request): void
     {
-        $idDemanda = (int) $request->input('id_demanda');
+        $idDemanda = (int) $request->input('id');
 
         Response::json(['data' => $this->interesses->listByDemanda($idDemanda)]);
     }

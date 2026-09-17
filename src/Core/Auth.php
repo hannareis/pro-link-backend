@@ -24,7 +24,10 @@ class Auth
     // Gera o hash seguro de uma senha em texto plano.
     public static function hashPassword(string $plainPassword): string
     {
-        return password_hash($plainPassword, (int) config('security.password_algo'));
+        // PASSWORD_BCRYPT/PASSWORD_ARGON2* sao strings (ex: "2y") desde o PHP 7.4+, nao
+        // numeros - um (int) aqui truncava "2y" para 2, trocando silenciosamente o
+        // algoritmo configurado (bcrypt) pelo Argon2i legado.
+        return password_hash($plainPassword, config('security.password_algo'));
     }
 
     // Verifica a senha em texto plano contra o hash armazenado no banco.

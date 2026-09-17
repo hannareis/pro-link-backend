@@ -24,12 +24,33 @@ class RecomendacaoService
         return [];
     }
 
+    // Demandas compativeis com o historico tecnico do profissional. Mesma situacao de
+    // sugerirAreas(): sem um modelo de NLP disponivel ainda, retorna vazio para que o
+    // DemandaController caia no fallback cronologico (DemandaRepository::all()).
+    public function listarDemandasCompativeis(int $profissionalId): array
+    {
+        return [];
+    }
+
     // Seleciona publicacoes aderentes ao interesse e historico tecnico do usuario: sem um
     // modelo de NLP disponivel, usa como proxy as competencias cadastradas no portfolio
     // profissional, priorizando posts de autores com pelo menos uma competencia em comum.
-    public function curarFeed(int $usuarioId): array
-    {
-        $publicacoes = $this->posts->all();
+    public function curarFeed(
+        int $usuarioId,
+        ?string $especialidade = null,
+        ?string $grauAcademico = null,
+        string $ordem = 'DESC',
+        ?string $tipoConta = null,
+        ?string $busca = null
+    ): array {
+        $publicacoes = $this->posts->all(
+            $usuarioId,
+            especialidade: $especialidade,
+            grauAcademico: $grauAcademico,
+            ordem: $ordem,
+            tipoConta: $tipoConta,
+            busca: $busca,
+        );
         $competenciasUsuario = $this->idsCompetencias($usuarioId);
 
         if ($competenciasUsuario === []) {

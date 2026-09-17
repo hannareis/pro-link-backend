@@ -31,7 +31,7 @@ class UniversidadeRepository
     public function findBySigla(string $sigla): ?Universidade
     {
         $stmt = Database::connection()->prepare('SELECT * FROM universidades WHERE sigla = :sigla LIMIT 1');
-        $stmt->execute(['nome' => strtolower($sigla)]);
+        $stmt->execute(['sigla' => strtolower($sigla)]);
         $row = $stmt->fetch();
 
         return $row ? $this->hydrate($row) : null;

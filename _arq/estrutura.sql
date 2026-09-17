@@ -766,6 +766,32 @@ CREATE TABLE demandas (
 
     descricao TEXT NOT NULL,
 
+    -- Area/tipo/modalidade/localizacao do escopo (RF04, item 7 - "Empresa publica demanda
+    -- com escopo, localizacao e requisitos"). Granularidade fina de habilidades exigidas
+    -- fica em demanda_competencias; estes campos sao a categorizacao ampla usada na busca.
+    area VARCHAR(100) NOT NULL DEFAULT '',
+
+    tipo ENUM(
+        'ESTAGIO',
+        'PROJETO',
+        'CONSULTORIA',
+        'ART',
+        'PERICIA',
+        'MENTORIA',
+        'PESQUISA',
+        'VOLUNTARIADO'
+    ) NOT NULL DEFAULT 'PROJETO',
+
+    cidade VARCHAR(100) NOT NULL DEFAULT '',
+
+    uf CHAR(2) NOT NULL DEFAULT '',
+
+    modalidade ENUM(
+        'PRESENCIAL',
+        'REMOTO',
+        'HIBRIDO'
+    ) NOT NULL DEFAULT 'PRESENCIAL',
+
     status ENUM(
         'ABERTA',
         'FECHADA',

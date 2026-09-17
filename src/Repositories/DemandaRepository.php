@@ -7,73 +7,117 @@ namespace App\Repositories;
 use App\Models\Demanda;
 use App\Core\Database;
 
-// Acesso ao MariaDB para a entidade Demanda (RF04), tabela pro_demandas.
+// Acesso ao MariaDB para a entidade Demanda (RF04), tabela `demandas`.
 class DemandaRepository
 {
     public function findById(int $id): ?Demanda
     {
-        $pdo = Database::connection();
-        $stmt = $pdo->prepare('SELECT * FROM demandas WHERE id = :id LIMIT 1');
+        $stmt = Database::connection()->prepare(
+            'SELECT d.*, ' . self::SELECT_CALCULADOS . '
+             FROM demandas d
+             LEFT JOIN pessoa_juridica pj ON pj.id_usuario = d.id_empresa
+             WHERE d.id = :id
+             LIMIT 1'
+        );
         $stmt->execute(['id' => $id]);
         $row = $stmt->fetch();
 
         return $row ? $this->hydrate($row) : null;
     }
 
-    public function findByEmpresa(int $empresaId, ?string $status = null): array
-    {
-        $pdo = Database::connection();
-        
-        $sql = 'SELECT d.*, 
-                (SELECT COUNT(*) FROM interesses i WHERE i.id_demanda = d.id AND i.status != \'CANCELADA\') as total_candidatos
-                FROM demandas d 
-                WHERE d.id_empresa = :id_empresa';
-                
-        $params = ['id_empresa' => $empresaId];
-
-        if ($status !== null) {
-            $sql .= ' AND d.status = :status';
-            $params['status'] = $status;
-        }
-
-        $sql .= ' ORDER BY d.data_publicacao DESC';
-
-        $stmt = $pdo->prepare($sql);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll();
-
-        // Mapeia e preenche a propriedade total_candidatos extra dinamicamente, se a model permitir.
-        // Como o hydrate retorna a Demanda, vamos precisar injetar o total_candidatos caso seja necessario no JSON.
-        // Uma forma eh usar array_map com stdClass ou arrays se o front precisar muito,
-        // Mas podemos adicionar uma propriedade publica virtual na classe Demanda.
-        $demandas = array_map($this->hydrate(...), $rows);
-        
-        // Atribui o total_candidatos no objeto
-        foreach ($demandas as $index => $demanda) {
-            $demanda->total_candidatos = (int) $rows[$index]['total_candidatos'];
-        }
-
-        return $demandas;
-    }
-
-    // Lista todas as demandas ativas.
+    // Lista todas as demandas abertas (sem filtros) - mantido para os poucos usos internos
+    // que so precisam do essencial. A busca publica usa buscarComFiltros().
     public function all(): array
     {
-        $pdo = Database::connection();
-        $stmt = $pdo->prepare('SELECT * FROM demandas WHERE status = :status ORDER BY data_publicacao DESC');
-        $stmt->execute(['status' => 'ABERTA']);
+        return $this->buscarComFiltros();
+    }
+
+    // Colunas calculadas via JOIN/subquery, reaproveitadas por findById() e buscarComFiltros().
+    private const SELECT_CALCULADOS = "
+        COALESCE(pj.nome_fantasia, pj.razao_social) AS company,
+        (SELECT COUNT(*) FROM demonstracoes_interesse di
+            WHERE di.id_demanda = d.id AND di.status != 'CANCELADA') AS interessados
+    ";
+
+    // Busca publica de demandas (RF04): texto livre (titulo/descricao/empresa), area,
+    // tipo, modalidade, status e uma faixa de prazo derivada de data_fechamento (sem
+    // coluna propria - "curto"/"medio"/"longo" sao calculados a partir de hoje).
+    public function buscarComFiltros(
+        ?string $busca = null,
+        ?string $area = null,
+        ?string $tipo = null,
+        ?string $modalidade = null,
+        ?string $prazo = null,
+        ?string $status = null,
+        int $limit = 50
+    ): array {
+        $condicoes = [];
+        $params = ['limit' => $limit];
+
+        if ($status !== null && $status !== '') {
+            $condicoes[] = 'd.status = :status';
+            $params['status'] = $status;
+        } else {
+            // Busca publica: por padrao so mostra o que ainda esta aberto.
+            $condicoes[] = "d.status = 'ABERTA'";
+        }
+
+        if ($busca !== null && $busca !== '') {
+            $condicoes[] = '(d.titulo LIKE :busca OR d.descricao LIKE :busca OR COALESCE(pj.nome_fantasia, pj.razao_social) LIKE :busca)';
+            $params['busca'] = '%' . $busca . '%';
+        }
+
+        if ($area !== null && $area !== '') {
+            $condicoes[] = 'd.area = :area';
+            $params['area'] = $area;
+        }
+
+        if ($tipo !== null && $tipo !== '') {
+            $condicoes[] = 'd.tipo = :tipo';
+            $params['tipo'] = $tipo;
+        }
+
+        if ($modalidade !== null && $modalidade !== '') {
+            $condicoes[] = 'd.modalidade = :modalidade';
+            $params['modalidade'] = $modalidade;
+        }
+
+        if ($prazo !== null && $prazo !== '') {
+            $condicoes[] = match ($prazo) {
+                'curto' => 'd.data_fechamento IS NOT NULL AND DATEDIFF(d.data_fechamento, NOW()) BETWEEN 0 AND 7',
+                'medio' => 'd.data_fechamento IS NOT NULL AND DATEDIFF(d.data_fechamento, NOW()) BETWEEN 8 AND 30',
+                'longo' => '(d.data_fechamento IS NULL OR DATEDIFF(d.data_fechamento, NOW()) > 30)',
+                default => '1 = 1',
+            };
+        }
+
+        $stmt = Database::connection()->prepare(
+            'SELECT d.*, ' . self::SELECT_CALCULADOS . '
+             FROM demandas d
+             LEFT JOIN pessoa_juridica pj ON pj.id_usuario = d.id_empresa
+             WHERE ' . implode(' AND ', $condicoes) . '
+             ORDER BY d.data_publicacao DESC
+             LIMIT :limit'
+        );
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, $key === 'limit' ? \PDO::PARAM_INT : \PDO::PARAM_STR);
+        }
+        $stmt->execute();
 
         return array_map($this->hydrate(...), $stmt->fetchAll());
     }
 
-    // Insere ou atualiza uma demanda e retorna o id persistido.
+    // Insere (id nulo) ou atualiza uma demanda e retorna o id persistido.
     public function save(Demanda $demanda): int
     {
         $pdo = Database::connection();
+
         if ($demanda->id === null) {
             $stmt = $pdo->prepare(
-                'INSERT INTO demandas (id_empresa, titulo, descricao, area, tipo, cidade, uf, modalidade, status, data_publicacao, data_fechamento, criado_em) 
-                VALUES (:id_empresa, :titulo, :descricao, :area, :tipo, :cidade, :uf, :modalidade, :status, :data_publicacao, :data_fechamento, :criado_em)'
+                'INSERT INTO demandas
+                    (id_empresa, titulo, descricao, area, tipo, cidade, uf, modalidade, status, data_fechamento)
+                 VALUES
+                    (:id_empresa, :titulo, :descricao, :area, :tipo, :cidade, :uf, :modalidade, :status, :data_fechamento)'
             );
             $stmt->execute([
                 'id_empresa' => $demanda->empresaId,
@@ -85,32 +129,37 @@ class DemandaRepository
                 'uf' => $demanda->uf,
                 'modalidade' => $demanda->modalidade,
                 'status' => $demanda->status,
-                'data_publicacao' => $demanda->dataPublicacao,
                 'data_fechamento' => $demanda->dataFechamento,
-                'criado_em' => $demanda->criadoEm,
             ]);
 
             return (int) $pdo->lastInsertId();
         }
+
+        // atualizado_em nao e setado aqui de proposito: a coluna ja tem
+        // ON UPDATE CURRENT_TIMESTAMP no schema.
         $stmt = $pdo->prepare(
-            'UPDATE demandas SET 
-            titulo = :titulo, 
-            descricao = :descricao,
-            tipo = :tipo, 
-            modalidade = :modalidade, 
-            status = :status,
-            data_fechamento = :data_fechamento, 
-            atualizado_em = :atualizado_em 
-            WHERE id = :id'
+            'UPDATE demandas SET
+                titulo = :titulo,
+                descricao = :descricao,
+                area = :area,
+                tipo = :tipo,
+                cidade = :cidade,
+                uf = :uf,
+                modalidade = :modalidade,
+                status = :status,
+                data_fechamento = :data_fechamento
+             WHERE id = :id'
         );
         $stmt->execute([
             'titulo' => $demanda->titulo,
             'descricao' => $demanda->descricao,
+            'area' => $demanda->area,
             'tipo' => $demanda->tipo,
+            'cidade' => $demanda->cidade,
+            'uf' => $demanda->uf,
             'modalidade' => $demanda->modalidade,
             'status' => $demanda->status,
             'data_fechamento' => $demanda->dataFechamento,
-            'atualizado_em' => $demanda->atualizadoEm,
             'id' => $demanda->id,
         ]);
 
@@ -123,28 +172,30 @@ class DemandaRepository
         if ($id === null) {
             return false;
         }
-        $pdo = Database::connection();
-        $stmt = $pdo->prepare('DELETE FROM demandas WHERE id = :id');
+        $stmt = Database::connection()->prepare('DELETE FROM demandas WHERE id = :id');
+
         return $stmt->execute(['id' => $id]);
     }
 
-    public function hydrate(array $row): Demanda
+    private function hydrate(array $row): Demanda
     {
         return new Demanda(
             id: (int) $row['id'],
             empresaId: isset($row['id_empresa']) ? (int) $row['id_empresa'] : null,
             titulo: (string) $row['titulo'],
             descricao: (string) $row['descricao'],
-            area: (string) $row['area_demanda'],
-            tipo: (string) $row['tipo_demanda'],
-            cidade: (string) $row['cidade_demanda'],
-            uf: (string) $row['uf_demanda'],
-            modalidade: (string) $row['modalidade'],
+            area: (string) ($row['area'] ?? ''),
+            tipo: (string) ($row['tipo'] ?? Demanda::TIPO_PROJETO),
+            cidade: (string) ($row['cidade'] ?? ''),
+            uf: (string) ($row['uf'] ?? ''),
+            modalidade: (string) ($row['modalidade'] ?? Demanda::MODALIDADE_PRESENCIAL),
             status: (string) $row['status'],
             dataPublicacao: $row['data_publicacao'] ?? null,
             dataFechamento: $row['data_fechamento'] ?? null,
             criadoEm: $row['criado_em'] ?? null,
             atualizadoEm: $row['atualizado_em'] ?? null,
+            company: $row['company'] ?? null,
+            interessados: (int) ($row['interessados'] ?? 0),
         );
     }
 }

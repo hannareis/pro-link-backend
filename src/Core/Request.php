@@ -14,16 +14,19 @@ class Request
     public readonly array $files;
 
     // Captura o estado das superglobais no momento em que a Request e criada.
-    public function __construct(public readonly array $params = [])
+    // $routeParams vem dos segmentos "{id}" da rota (Router::dispatch) e tem
+    // prioridade sobre a query string em caso de conflito de chave.
+    public function __construct(array $routeParams = [])
     {
-        $this->query = $_GET;
+        $this->query = $routeParams + $_GET;
         $this->files = $_FILES;
 
         $contentType = $_SERVER['CONTENT_TYPE'] ?? $_SERVER['HTTP_CONTENT_TYPE'] ?? '';
 
-        if (str_contains($contentType, 'application/json')) { 
+        if (str_contains($contentType, 'application/json')) {
             $rawInput = file_get_contents('php://input');
-            $this->body = json_decode($rawInput, true) ?? [];
+            $json = json_decode($rawInput, true);
+            $this->body = is_array($json) ? $json : [];
         } else {
             $this->body = $_POST;
         }

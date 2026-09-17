@@ -34,6 +34,7 @@ use App\Models\User;
 /** @var \App\Core\Router $router */
 
 // RF01 - autenticacao e cadastro. POSTs passam por sanitizacao e protecao CSRF.
+$router->get('/csrf-token', [AuthController::class, 'csrfToken']);
 $router->get('/auth/login', [AuthController::class, 'showLogin']);
 $router->post('/auth/login', [AuthController::class, 'login'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/auth/register', [AuthController::class, 'register'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
@@ -127,6 +128,9 @@ $router->post('/especialidades/{id}', [EspecialidadeController::class, 'update']
 $router->post('/especialidades/{id}/desativar', [EspecialidadeController::class, 'destroy'], $adminWrite);
 
 // RF02/RF03 - perfil profissional e seus vinculos.
+// RF02/RF03 - busca publica de talentos (profissionais + universitarios), item "Publico"
+// dos perfis de usuario do Anexo I: pesquisar por nome, area, grau academico, registro CREA.
+$router->get('/profissionais', [ProfissionalController::class, 'search']);
 $router->get('/profissionais/{id}', [ProfissionalController::class, 'show']);
 $router->post('/profissionais', [ProfissionalController::class, 'store'], $write);
 $router->post('/profissionais/competencias', [ProfissionalController::class, 'syncCompetencias'], $write);

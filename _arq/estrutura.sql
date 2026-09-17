@@ -135,6 +135,17 @@ CREATE TABLE pessoa_juridica (
 
     razao_social VARCHAR(150) NOT NULL,
 
+    -- Selo de verificacao da empresa (contrato social + comprovante cadastral
+    -- enviados pelo proprio usuario, analisados manualmente pelo ADMIN_CREA).
+    status_verificacao ENUM('NAO_SOLICITADA', 'PENDENTE', 'APROVADA', 'REJEITADA')
+        NOT NULL DEFAULT 'NAO_SOLICITADA',
+
+    data_solicitacao_verificacao DATETIME,
+
+    doc_contrato_social VARCHAR(255),
+
+    doc_comprovante_cadastral VARCHAR(255),
+
     criado_em DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     atualizado_em DATETIME NOT NULL

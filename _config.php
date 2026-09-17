@@ -26,6 +26,9 @@ return [
         'name' => $_ENV['APP_NAME'] ?? 'Pro-Link',
         'env' => $_ENV['APP_ENV'] ?? 'production',
         'url' => $_ENV['APP_URL'] ?? 'http://localhost',
+        // URL da SPA (pro-link-do-check-in-ao-check-out), usada para montar links de
+        // e-mail que devem abrir uma tela do frontend (ex: redefinicao de senha).
+        'frontend_url' => $_ENV['FRONTEND_URL'] ?? 'http://localhost:8081',
     ],
 
     'database' => [

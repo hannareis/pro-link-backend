@@ -315,7 +315,10 @@ class AuthController
                 expiraEm: date('Y-m-d H:i:s', time() + 1800),
             ));
 
-            $link = rtrim((string) config('app.url'), '/') . '/reset-password?token=' . $tokenPlano;
+            // Aponta para a tela da SPA (nao para a API): "#redefinir-senha" carrega
+            // public/src/pages/layouts/redefinirSenha.html, que consome o token via
+            // resetPassword() (shared/api/auth.js) contra este mesmo endpoint.
+            $link = rtrim((string) config('app.frontend_url'), '/') . '/#redefinir-senha?token=' . $tokenPlano;
 
             $this->notificacaoService->enviarEmail(
                 $user->email,

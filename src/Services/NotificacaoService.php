@@ -18,9 +18,21 @@ class NotificacaoService
     }
 
     // Dispara um e-mail via SMTP (Anexo I, item 8.3.1 do Edital), usado em
-    // alertas administrativos e recuperacao de senha.
-    public function enviarEmail(string $destinatario, string $assunto, string $corpo): bool
-    {
+    // alertas administrativos, recuperacao de senha e cartas virtuais. $anexoCaminho e
+    // um caminho absoluto no disco (ex: PATH_PUBLIC . '/' . $carta->caminhoArmazenamento);
+    // anexo ausente ou inexistente e silenciosamente ignorado (nao falha o envio).
+    // $replyToEmail: quando a mensagem e enviada "em nome de" outro usuario (cartas
+    // virtuais), aponta o Reply-To pra essa pessoa em vez da conta SMTP fixa - ajuda
+    // na entregabilidade e permite o destinatario responder direto pro remetente real.
+    public function enviarEmail(
+        string $destinatario,
+        string $assunto,
+        string $corpo,
+        ?string $anexoCaminho = null,
+        ?string $anexoNome = null,
+        ?string $replyToEmail = null,
+        ?string $replyToNome = null
+    ): bool {
         $mail = new PHPMailer(true);
 
         try {
@@ -36,10 +48,18 @@ class NotificacaoService
             $mail->setFrom((string) config('mail.from_address'), (string) config('mail.from_name'));
             $mail->addAddress($destinatario);
 
+            if ($replyToEmail !== null) {
+                $mail->addReplyTo($replyToEmail, $replyToNome ?? $replyToEmail);
+            }
+
             $mail->isHTML(true);
             $mail->Subject = $assunto;
             $mail->Body = $corpo;
             $mail->AltBody = strip_tags($corpo);
+
+            if ($anexoCaminho !== null && is_file($anexoCaminho)) {
+                $mail->addAttachment($anexoCaminho, $anexoNome ?? basename($anexoCaminho));
+            }
 
             return $mail->send();
         } catch (PHPMailerException $e) {

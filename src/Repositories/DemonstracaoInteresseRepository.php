@@ -36,21 +36,47 @@ class DemonstracaoInteresseRepository
     public function listByDemanda(int $idDemanda): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT * FROM demonstracoes_interesse WHERE id_demanda = :d ORDER BY data_interesse DESC'
+            'SELECT d.*, u.nome as nome_usuario, dm.titulo as titulo_demanda 
+             FROM demonstracoes_interesse d
+             JOIN usuarios u ON d.id_usuario = u.id
+             JOIN demandas dm ON d.id_demanda = dm.id
+             WHERE d.id_demanda = :d 
+             ORDER BY d.data_interesse DESC'
         );
         $stmt->execute(['d' => $idDemanda]);
 
-        return array_map($this->hydrate(...), $stmt->fetchAll());
+        $rows = $stmt->fetchAll();
+        $interesses = array_map($this->hydrate(...), $rows);
+
+        foreach ($interesses as $index => $interesse) {
+            $interesse->nome_usuario = $rows[$index]['nome_usuario'];
+            $interesse->titulo_demanda = $rows[$index]['titulo_demanda'];
+        }
+
+        return $interesses;
     }
 
     public function listByUsuario(int $idUsuario): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT * FROM demonstracoes_interesse WHERE id_usuario = :u ORDER BY data_interesse DESC'
+            'SELECT d.*, u.nome as nome_usuario, dm.titulo as titulo_demanda 
+             FROM demonstracoes_interesse d
+             JOIN usuarios u ON d.id_usuario = u.id
+             JOIN demandas dm ON d.id_demanda = dm.id
+             WHERE d.id_usuario = :u 
+             ORDER BY d.data_interesse DESC'
         );
         $stmt->execute(['u' => $idUsuario]);
 
-        return array_map($this->hydrate(...), $stmt->fetchAll());
+        $rows = $stmt->fetchAll();
+        $interesses = array_map($this->hydrate(...), $rows);
+
+        foreach ($interesses as $index => $interesse) {
+            $interesse->nome_usuario = $rows[$index]['nome_usuario'];
+            $interesse->titulo_demanda = $rows[$index]['titulo_demanda'];
+        }
+
+        return $interesses;
     }
 
     public function save(DemonstracaoInteresse $d): int

@@ -22,6 +22,30 @@ class ProfissionalRepository
         return $row ? $this->hydrate($row) : null;
     }
 
+    // Busca o CPF ou CNPJ (dependendo do tipo de pessoa) associado ao usuário.
+    public function findCpfCnpjByUsuarioId(int $idUsuario): ?string
+    {
+        $db = Database::connection();
+        
+        // Verifica se é pessoa física
+        $stmt = $db->prepare('SELECT cpf FROM pessoa_fisica WHERE id_usuario = :id LIMIT 1');
+        $stmt->execute(['id' => $idUsuario]);
+        $cpf = $stmt->fetchColumn();
+        if ($cpf) {
+            return (string) $cpf;
+        }
+
+        // Verifica se é pessoa jurídica
+        $stmt = $db->prepare('SELECT cnpj FROM pessoa_juridica WHERE id_usuario = :id LIMIT 1');
+        $stmt->execute(['id' => $idUsuario]);
+        $cnpj = $stmt->fetchColumn();
+        if ($cnpj) {
+            return (string) $cnpj;
+        }
+
+        return null;
+    }
+
     public function findByRegistro(string $numeroRegistro): ?Profissional
     {
         $stmt = Database::connection()->prepare(

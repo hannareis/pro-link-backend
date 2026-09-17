@@ -30,6 +30,8 @@ class User
         public string $email = '',
         public string $senhaHash = '',
         public string $telefone = '',
+        public string $estado = '',
+        public string $cidade = '',
         public string $tipoPessoa = self::TIPO_PESSOA_FISICA,
         public string $perfilAcesso = self::PERFIL_USUARIO,
         public string $tipoConta = self::TIPO_CONTA_COMUM,

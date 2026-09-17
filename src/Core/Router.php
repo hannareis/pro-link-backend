@@ -74,13 +74,13 @@ class Router
         // Pipeline de middlewares (ex: sanitizacao -> CSRF -> autenticacao -> perfil).
         // Cada item pode ser um class-string (instanciado sem argumentos) ou uma
         // instancia ja configurada (ex: new RoleMiddleware(['admin'])).
-        foreach ($route['middlewares'] as $middleware) {
+        foreach ($matchedRoute['middlewares'] as $middleware) {
             $instance = is_string($middleware) ? new $middleware() : $middleware;
             $instance->handle($request);
         }
 
         // Chama o Controller/acao correspondente, ja com a requisicao validada.
-        [$controllerClass, $action] = $route['handler'];
+        [$controllerClass, $action] = $matchedRoute['handler'];
         (new $controllerClass())->$action($request);
     }
 }

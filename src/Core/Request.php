@@ -36,7 +36,7 @@ class Request
     // Busca um valor no corpo da requisicao, com fallback para a query string.
     public function input(string $key, mixed $default = null): mixed
     {
-        return $this->body[$key] ?? $this->query[$key] ?? $default;
+        return $this->params[$key] ?? $this->body[$key] ?? $this->query[$key] ?? $default;
     }
 
     // Retorna os dados do usuario autenticado na sessao, ou null se nao houver login.

@@ -10,8 +10,9 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Core\View;
 use App\Models\PasswordResetToken;
-use App\Models\PessoaFisica;
 use App\Repositories\PasswordResetTokenRepository;
+use App\Models\PessoaFisica;
+use App\Repositories\PortfolioRepository;
 use App\Repositories\ProfissionalRepository;
 use App\Repositories\UniversidadeRepository;
 use App\Repositories\UniversitarioRepository;
@@ -41,6 +42,7 @@ class AuthController
         private readonly CreaApiService $creaApiService = new CreaApiService(),
         private readonly PessoaFisicaRepository $pessoaFisicaRepository = new PessoaFisicaRepository(),
         private readonly PessoaJuridicaRepository $pessoaJuridicaRepository = new PessoaJuridicaRepository(),
+        private readonly PortfolioRepository $portfolioRepository = new PortfolioRepository(),
         private readonly ProfissionalRepository $profissionalRepository = new ProfissionalRepository(),
         private readonly UniversitarioRepository $universitarioRepository = new UniversitarioRepository(),
         private readonly UniversidadeRepository $universidadeRepository = new UniversidadeRepository(),
@@ -96,6 +98,8 @@ class AuthController
         $email = (string) $request->input('email');
         $senha = (string) ($request->input('password') ?? $request->input('senha'));
         $telefone = (string) ($request->input('phone') ?? $request->input('telefone'));
+        $cpf = (string) $request->input('document_number', '');
+        $cnpj = (string) $request->input('document_number', '');
 
         $profileTypeHtml = (string) $request->input('profile_type');
 
@@ -242,7 +246,8 @@ class AuthController
         $dataRecebida = (string) $request->input('previsao_formatura');
         $data = DateTime::createFromFormat('Y-m-d', $dataRecebida);
         $valida = $data && $data->format('Y-m-d') === $dataRecebida;
-        if (!$valida) Response::json(['message' => 'Data inválida']);
+        if (!$valida)
+            Response::json(['message' => 'Data inválida']);
 
         $userUniversitario = new \App\Models\Universitario(
             idUsuario: $userId,
@@ -355,5 +360,36 @@ class AuthController
         $this->passwordResetTokenRepository->marcarUsado((int) $resetToken->id);
 
         Response::json(['message' => 'Senha redefinida com sucesso.']);
+    }
+    
+    public function changePassword(Request $request): void
+    {
+        $userId = auth_id();
+        $user = $this->userRepository->findById($userId);
+        $novaSenha = (string) ($request->input('new_password') ?? $request->input('nova_senha'));
+        $senhaAtual = (string) ($request->input('current_password') ?? $request->input('senha_atual'));
+
+        if ($userId === 0 || $user === null) {
+            Response::json(['message' => 'Não autorizado.'], 401);
+            return;
+        }
+
+        if (empty($novaSenha) || empty($senhaAtual)) {
+            Response::json(['message' => 'As senhas são obrigatórias.'], 400);
+            return;
+        }
+
+        if (!Auth::verifyPassword($senhaAtual, $user->senhaHash)) {
+            Response::json(['message' => 'Credenciais invalidas.'], 422);
+            return;
+        }
+
+        $user->senhaHash = Auth::hashPassword($novaSenha);
+        $this->userRepository->save($user);
+
+        session_regenerate_id(true);
+        $this->passwordResetTokenRepository->marcarTodos($userId);
+
+        Response::json(['message' => 'Senha alterada com sucesso.']);
     }
 }

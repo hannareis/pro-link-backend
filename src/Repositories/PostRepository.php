@@ -108,6 +108,17 @@ class PostRepository
         return array_map($this->hydrate(...), $stmt->fetchAll());
     }
 
+    public function findByUserId(int $userId): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT * FROM posts WHERE id_autor = :userId ORDER BY data_postagem DESC, id DESC'
+        );
+        $stmt->bindValue(':userId', $userId, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return array_map($this->hydrate(...), $stmt->fetchAll());
+    }
+
     public function save(Post $post): int
     {
         $pdo = Database::connection();

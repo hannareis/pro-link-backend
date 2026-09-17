@@ -41,6 +41,7 @@ $router->post('/auth/register', [AuthController::class, 'register'], [SanitizeIn
 $router->post('/auth/logout', [AuthController::class, 'logout'], [AuthMiddleware::class]);
 $router->post('/recover-password', [AuthController::class, 'recoverPassword'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/reset-password', [AuthController::class, 'resetPassword'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/change-password', [AuthController::class, 'changePassword'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 
 // RF04 - feed curado pelo Agente de Recomendacao; exige usuario autenticado.
 $router->get('/feed', [FeedController::class, 'index'], [AuthMiddleware::class]);
@@ -52,6 +53,11 @@ $router->post('/notificacoes/marcar-lida', [NotificacaoController::class, 'markA
 
 // RF01/RF03 - visualizacao publica de perfil; edicao exige autenticacao.
 $router->get('/perfil/{id}', [UserController::class, 'show']);
+$router->get('/perfil/me', [UserController::class, 'show'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/perfil/me', [UserController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/perfil/universitario/me', [UniversitarioController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/perfil/profissional/me', [ProfissionalController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+// $router->post('/perfil/empresa', [PessoaJuridicaController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/perfil', [UserController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/perfil/remover', [UserController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 $router->get('/perfil/privacidade', [UserController::class, 'privacySettings'], [AuthMiddleware::class]);
@@ -59,6 +65,7 @@ $router->post('/perfil/privacidade', [UserController::class, 'updatePrivacySetti
 
 // RF03 - portfolio profissional/academico/empresarial.
 $router->get('/portfolio/{id}', [PortfolioController::class, 'show']);
+$router->get('/portfolio/me', [PortfolioController::class, 'show']);
 $router->post('/portfolio', [PortfolioController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/portfolio/{id}', [PortfolioController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/portfolio/{id}/remover', [PortfolioController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
@@ -71,16 +78,21 @@ $router->post('/demandas/{id}/editar', [DemandaController::class, 'update'], [Au
 $router->post('/demandas/{id}/remover', [DemandaController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 
 // RF05 - comunicação inicial entre empresas, instituições e profissionais através da criação de posts.
+$router->get('/posts', [PostController::class, 'index']);
 $router->post('/posts', [PostController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/edit', [PostController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/posts/{id}/remover', [PostController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/{id}/anexos', [PostAnexoController::class, 'store'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/{id}/like', [PostController::class, 'likePost'], [AuthMiddleware::class]);
 
 // RF06 - painel administrativo, restrito ao perfil admin via RoleMiddleware.
-$router->get('/admin', [AdminController::class, 'dashboard'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN])]);
+$router->get('/admin/dashboard', [AdminController::class, 'dashboard'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN])]);
+$router->post('/admin/register', [AdminController::class, 'registerAdmin'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->get('/admin/usuarios', [AdminController::class, 'manageUsers'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->post('/admin/usuarios/status', [AdminController::class, 'toggleUserStatus'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/admin/universitarios/aprovar', [AdminController::class, 'approveUniversitario'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->get('/admin/moderacao', [AdminController::class, 'moderation'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
+$router->post('/admin/denuncias/moderar', [AdminController::class, 'moderateDenuncia'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->get('/admin/auditoria', [AdminController::class, 'auditLogs'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->get('/admin/dados-publicos', [AdminController::class, 'dadosPublicos'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 

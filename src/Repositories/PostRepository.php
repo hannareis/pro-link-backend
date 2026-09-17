@@ -93,7 +93,8 @@ class PostRepository
                 (SELECT COUNT(*) FROM comentarios c WHERE c.id_post = p.id AND c.status_comentario = :statusComentario) AS comentarios,
                 EXISTS(
                     SELECT 1 FROM likes_posts lpm WHERE lpm.id_post = p.id AND lpm.id_usuario = :usuarioAtual
-                ) AS curtido_por_mim
+                ) AS curtido_por_mim,
+                (SELECT a.caminho_armazenamento FROM anexos a WHERE a.id_post = p.id ORDER BY a.id ASC LIMIT 1) AS imagem_caminho
              FROM posts p
              JOIN usuarios u ON u.id = p.id_autor
              WHERE ' . implode(' AND ', $condicoes) . "
@@ -111,7 +112,12 @@ class PostRepository
     public function findByUserId(int $userId): array
     {
         $stmt = Database::connection()->prepare(
-            'SELECT * FROM posts WHERE id_autor = :userId ORDER BY data_postagem DESC, id DESC'
+            'SELECT
+                p.*,
+                (SELECT a.caminho_armazenamento FROM anexos a WHERE a.id_post = p.id ORDER BY a.id ASC LIMIT 1) AS imagem_caminho
+             FROM posts p
+             WHERE p.id_autor = :userId
+             ORDER BY p.data_postagem DESC, p.id DESC'
         );
         $stmt->bindValue(':userId', $userId, \PDO::PARAM_INT);
         $stmt->execute();
@@ -179,6 +185,12 @@ class PostRepository
             conteudo: (string) $row['conteudo'],
             status: (string) $row['status_post'],
             titulo: (string) ($row['titulo'] ?? ''),
+            // Uploads ficam em public/uploads (servidos como estatico pelo nginx - ver
+            // docker/nginx/default.conf) - precisa da URL absoluta do backend porque o
+            // front roda em outra origem (porta 8081).
+            imagemUrl: !empty($row['imagem_caminho'])
+                ? rtrim((string) config('app.url'), '/') . '/' . $row['imagem_caminho']
+                : null,
             autorNome: isset($row['autor_nome']) ? (string) $row['autor_nome'] : null,
             autorTipoConta: isset($row['autor_tipo_conta']) ? (string) $row['autor_tipo_conta'] : null,
             curtidas: (int) ($row['curtidas'] ?? 0),

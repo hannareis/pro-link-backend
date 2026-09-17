@@ -10,6 +10,9 @@ class Post extends Publicavel
     public function __construct(
         ?int $id = null, int $userId = 0, ?string $dataDePostagem = null, ?string $dataEdicao = null, string $conteudo = "", string $status = self::STATUS_PUBLICO,
         public string $titulo = "",
+        // URL absoluta da primeira midia anexada ao post (ver PostAnexoController /
+        // AnexoRepository), agregada por PostRepository::all()/findByUserId().
+        public ?string $imagemUrl = null,
         // Campos agregados por PostRepository::all() para exibicao no feed (Anexo I, RF04).
         public ?string $autorNome = null,
         public ?string $autorTipoConta = null,

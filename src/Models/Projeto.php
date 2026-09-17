@@ -21,6 +21,9 @@ class Projeto
         public ?string $atualizadoEm = null,
         // Competencias utilizadas (tabela `projeto_competencias`), carregadas sob demanda.
         public array $competencias = [],
+        // URLs absolutas da galeria (tabela `projeto_imagens`), carregadas sob demanda
+        // por ProjetoController (ver ProjetoImagemRepository::listByProjeto).
+        public array $imagens = [],
     ) {
     }
 }

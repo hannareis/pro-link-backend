@@ -6,18 +6,35 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Core\Response;
+use App\Models\Anexo;
 use App\Models\Curtida;
 use App\Models\Post;
+use App\Repositories\AnexoRepository;
 use App\Repositories\CurtidaPostRepository;
 use App\Repositories\PostRepository;
+use App\Services\FileUploadService;
 
 // RF05 - criacao, edicao e interacao com posts (curtidas).
 // Refatorado com assistência de Inteligência Artificial para alinhamento aos padrões arquiteturais do projeto.
 class PostController
 {
+    // MIME real (via fileinfo) -> extensao aceita para a midia do post (campo "midia").
+    private const MIDIA_MIMES_PERMITIDOS = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'application/pdf' => 'pdf',
+    ];
+
+    private const MIDIA_TAMANHO_MAXIMO_BYTES = 5 * 1024 * 1024;
+
     public function __construct(
         private readonly PostRepository $postRepository = new PostRepository(),
-        private readonly CurtidaPostRepository $curtidaPostRepository = new CurtidaPostRepository()
+        private readonly CurtidaPostRepository $curtidaPostRepository = new CurtidaPostRepository(),
+        private readonly AnexoRepository $anexoRepository = new AnexoRepository(),
+        private readonly FileUploadService $fileUploadService = new FileUploadService(
+            self::MIDIA_MIMES_PERMITIDOS,
+            self::MIDIA_TAMANHO_MAXIMO_BYTES
+        ),
     ) {
     }
 
@@ -35,9 +52,22 @@ class PostController
     }
 
     // [IA]: Adequação para obtenção do usuário via auth_id() e envio de resposta JSON com status 201.
+    // Upload de midia (campo "midia", enviado por postCriar.js) segue o mesmo padrao de
+    // CartaVirtualController: valida/salva o arquivo antes de criar o registro principal,
+    // e so entao vincula o Anexo ao post recem-criado.
     public function store(Request $request): void
     {
         $userId = auth_id();
+
+        try {
+            $midia = $this->fileUploadService->store($request->file('midia'), 'posts');
+        } catch (\InvalidArgumentException $e) {
+            Response::json(['message' => $e->getMessage()], 400);
+            return;
+        } catch (\RuntimeException $e) {
+            Response::json(['message' => $e->getMessage()], 500);
+            return;
+        }
 
         $post = new Post(
             userId: $userId,
@@ -47,6 +77,17 @@ class PostController
         );
 
         $id = $this->postRepository->save($post);
+
+        if ($midia !== null) {
+            $this->anexoRepository->save(new Anexo(
+                postId: $id,
+                nome: $midia['nome_arquivo'],
+                nomeArmazenado: $midia['nome_armazenado'],
+                tipoMime: $midia['tipo_mime'],
+                tamanho: $midia['tamanho'],
+                caminhoArmazenamento: $midia['caminho_armazenamento'],
+            ));
+        }
 
         Response::json(['message' => 'Post criado.', 'id' => $id], 201);
     }
@@ -65,6 +106,8 @@ class PostController
     }
 
     // [IA]: Padronização do método para update, validação de autor (403), registro (404) e resposta em JSON.
+    // Midia (campo "midia", postEditar.js): um novo arquivo substitui o anexo atual do
+    // post; "remover_midia=1" sem arquivo novo apenas remove o anexo atual.
     public function update(Request $request): void
     {
         $id = (int) $request->input('id');
@@ -83,10 +126,39 @@ class PostController
             return;
         }
 
+        try {
+            $midia = $this->fileUploadService->store($request->file('midia'), 'posts');
+        } catch (\InvalidArgumentException $e) {
+            Response::json(['message' => $e->getMessage()], 400);
+            return;
+        } catch (\RuntimeException $e) {
+            Response::json(['message' => $e->getMessage()], 500);
+            return;
+        }
+
         $post->titulo = (string) $request->input('titulo', $post->titulo);
         $post->conteudo = (string) $request->input('conteudo', $post->conteudo);
         $post->status = (string) $request->input('status', $post->status);
         $this->postRepository->save($post);
+
+        $removerMidia = (string) $request->input('remover_midia', '') === '1';
+
+        if ($midia !== null || $removerMidia) {
+            foreach ($this->anexoRepository->listByPost($id) as $anexoExistente) {
+                $this->anexoRepository->delete($anexoExistente);
+            }
+        }
+
+        if ($midia !== null) {
+            $this->anexoRepository->save(new Anexo(
+                postId: $id,
+                nome: $midia['nome_arquivo'],
+                nomeArmazenado: $midia['nome_armazenado'],
+                tipoMime: $midia['tipo_mime'],
+                tamanho: $midia['tamanho'],
+                caminhoArmazenamento: $midia['caminho_armazenamento'],
+            ));
+        }
 
         Response::json(['message' => 'Post atualizado.']);
     }

@@ -10,6 +10,8 @@ storage/logs/*.log
 storage/uploads/*
 !storage/uploads/.gitkeep
 !storage/uploads/arts_cats/.gitkeep
+public/uploads/*
+!public/uploads/.gitkeep
 .phpunit.result.cache
 
 # Arquivos de sistema operacional

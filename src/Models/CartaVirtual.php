@@ -4,23 +4,26 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-// RF05 - manifestacao de interesse formal entre as partes (check-in ao check-out).
+// Tabela `cartas_virtuais`: carta/certificado enviado pelo usuario autor (id_usuario)
+// a um destinatario externo por e-mail, opcionalmente vinculada a uma demanda e com
+// um arquivo anexo (documento/imagem) opcional.
 class CartaVirtual
 {
-    public const STATUS_CRIADA = 'criada';
-    public const STATUS_ENVIADA = 'enviada';
-
     public function __construct(
         public ?int $id = null,
-        public int $remetenteId = 0,
-        public int $destinatarioId = 0,
-        public string $conteudo = '',
-        // Cartas publicas ficam visiveis no perfil; privadas ficam restritas as partes.
-        public bool $publica = false,
-        // 'criada' apos o check-in; 'enviada' apos o check-out (disparo via SMTP).
-        public string $statusEnvio = self::STATUS_CRIADA,
-        // Exclusao logica: 'A' (ativo) ou 'X' (excluido, preserva auditoria).
-        public string $status = 'A',
+        public int $idUsuario = 0,
+        public ?int $idDemanda = null,
+        public string $titulo = '',
+        public ?string $legenda = null,
+        public string $remetenteEmail = '',
+        public string $destinatarioEmail = '',
+        public ?string $nomeArquivo = null,
+        public ?string $nomeArmazenado = null,
+        public ?string $tipoMime = null,
+        public ?int $tamanhoArquivo = null,
+        public ?string $caminhoArmazenamento = null,
+        public ?string $criadoEm = null,
+        public ?string $atualizadoEm = null,
     ) {
     }
 }

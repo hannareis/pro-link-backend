@@ -52,6 +52,18 @@ class AuditoriaRepository
         return array_map($this->hydrate(...), $stmt->fetchAll());
     }
 
+    // Feed global de auditoria (mais recentes primeiro), usado pelo painel administrativo.
+    public function listAll(int $limite = 200): array
+    {
+        $stmt = Database::connection()->prepare(
+            'SELECT * FROM sis_auditoria ORDER BY aud_dt_registro DESC LIMIT :limite'
+        );
+        $stmt->bindValue('limite', $limite, \PDO::PARAM_INT);
+        $stmt->execute();
+
+        return array_map($this->hydrate(...), $stmt->fetchAll());
+    }
+
     public function listByUsuario(int $usuId, int $limite = 100): array
     {
         $stmt = Database::connection()->prepare(

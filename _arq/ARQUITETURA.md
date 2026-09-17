@@ -30,7 +30,7 @@ Repository).
 
 | Camada | Diretório | Responsabilidade |
 |---|---|---|
-| Apresentação | `views/` | Templates PHP puro por módulo (auth, feed, portfolio, demanda, carta-virtual, admin) |
+| Apresentação | `views/` | Templates PHP puro por módulo (auth, feed, portfolio, demanda, admin) |
 | Aplicação/Controle | `src/Core`, `src/Middleware`, `routes/` | Roteamento, requisição/resposta, autenticação, CSRF, sanitização |
 | Domínio/Negócio | `src/Controllers`, `src/Services` | Orquestração da requisição e regras de negócio (RF02–RF07) |
 | Persistência | `src/Models`, `src/Repositories` | Entidades de domínio e acesso ao MariaDB, com exclusão lógica |
@@ -59,8 +59,9 @@ Repository).
 - **RF04**: `RecomendacaoService` (NLP) sugere áreas de atuação a partir do
   escopo textual da demanda — apenas indicativo, sem ranking de
   profissionais (vedado pelo Edital, item 10.1).
-- **RF05**: `CartaVirtualService` implementa o fluxo de check-in
-  (redação + validação de credenciais) e check-out (persistência + envio).
+- **RF05**: comunicação inicial entre empresas, instituições e profissionais
+  via `PostController` (posts/curtidas) e `DemonstracaoInteresseController`
+  (manifestação de interesse sobre demandas).
 - **RF06**: `AuditoriaService` e a tabela `sis_auditoria` registram ações
   críticas para trilha de auditoria administrativa.
 - **RF07**: notificações internas e por e-mail via `NotificacaoService`.

@@ -8,13 +8,17 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Models\Art;
 use App\Repositories\ArtRepository;
+use App\Repositories\PessoaFisicaRepository;
+use App\Services\CreaApiService;
 
 // RF02/RF03 - Anotacoes de Responsabilidade Tecnica vinculadas ao portfolio.
 // A validacao (validar) fica restrita ao ADMIN_CREA via RoleMiddleware.
 class ArtController
 {
     public function __construct(
-        private readonly ArtRepository $arts = new ArtRepository()
+        private readonly ArtRepository $arts = new ArtRepository(),
+        private readonly PessoaFisicaRepository $pessoaFisicaRepository = new PessoaFisicaRepository(),
+        private readonly CreaApiService $creaApiService = new CreaApiService(),
     ) {
     }
 
@@ -66,14 +70,39 @@ class ArtController
     }
 
     // RF02 - ADMIN_CREA aprova/rejeita a ART; marca validada_por_crea e data_validacao.
+    // Para aprovar, confirma antes que o profissional responsavel existe no
+    // cadastro oficial do CREA-AM (rejeitar/cancelar nao exige essa consulta).
     public function validar(Request $request): void
     {
         $id = (int) $request->input('id');
         $status = (string) $request->input('status_art', Art::STATUS_APROVADA);
 
-        if ($this->arts->findById($id) === null) {
+        $art = $this->arts->findById($id);
+
+        if ($art === null) {
             Response::json(['message' => 'ART nao encontrada.'], 404);
             return;
+        }
+
+        if ($status === Art::STATUS_APROVADA) {
+            $pessoaFisica = $this->pessoaFisicaRepository->findByUsuarioId($art->idProfissionalResponsavel);
+
+            if ($pessoaFisica === null) {
+                Response::json(['message' => 'CPF do profissional responsável não encontrado.'], 422);
+                return;
+            }
+
+            try {
+                $confirmado = $this->creaApiService->profissionalExisteNoCrea($pessoaFisica->cpf);
+            } catch (\RuntimeException $e) {
+                Response::json(['message' => 'Não foi possível contatar a API do CREA-AM. Tente novamente.'], 502);
+                return;
+            }
+
+            if (!$confirmado) {
+                Response::json(['message' => 'Profissional responsável não confirmado pelo CREA-AM.'], 422);
+                return;
+            }
         }
 
         $this->arts->validar($id, $status);

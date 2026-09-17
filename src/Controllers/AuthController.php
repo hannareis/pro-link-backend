@@ -331,4 +331,35 @@ class AuthController
 
         Response::json(['message' => 'Senha redefinida com sucesso.']);
     }
+    
+    public function changePassword(Request $request): void
+    {
+        $userId = auth_id();
+        $user = $this->userRepository->findById($userId);
+        $novaSenha = (string) ($request->input('new_password') ?? $request->input('nova_senha'));
+        $senhaAtual = (string) ($request->input('current_password') ?? $request->input('senha_atual'));
+
+        if ($userId === 0 || $user === null) {
+            Response::json(['message' => 'Não autorizado.'], 401);
+            return;
+        }
+
+        if (empty($novaSenha) || empty($senhaAtual)) {
+            Response::json(['message' => 'As senhas são obrigatórias.'], 400);
+            return;
+        }
+
+        if (!Auth::verifyPassword($senhaAtual, $user->senhaHash)) {
+            Response::json(['message' => 'Credenciais invalidas.'], 422);
+            return;
+        }
+
+        $user->senhaHash = Auth::hashPassword($novaSenha);
+        $this->userRepository->save($user);
+
+        session_regenerate_id(true);
+        $this->passwordResetTokenRepository->marcarTodos($userId);
+
+        Response::json(['message' => 'Senha alterada com sucesso.']);
+    }
 }

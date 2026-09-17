@@ -50,6 +50,15 @@ class PasswordResetTokenRepository
         $stmt->execute(['id' => $id]);
     }
 
+    // Marca todos os tokens como usados, impedindo que um link seja interceptado após uma mudança de senha
+    public function marcarTodos(int $userId): void
+    {
+        $stmt = Database::connection()->prepare(
+            'UPDATE tokens_redefinicao_senha SET usado_em = CURRENT_TIMESTAMP WHERE id_usuario = :userId AND usado_em IS NULL'
+        );
+        $stmt->execute(['userId' => $userId]);
+    }
+
     private function hydrate(array $row): PasswordResetToken
     {
         return new PasswordResetToken(

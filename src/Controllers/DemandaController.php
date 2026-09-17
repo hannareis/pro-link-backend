@@ -18,15 +18,22 @@ class DemandaController
     ) {
     }
 
-    // Lista demandas compativeis com o historico tecnico do profissional autenticado.
     public function index(Request $request): void
     {
-        $profissionalId = auth_id();
+        $idEmpresa = $request->input('id_empresa');
+        $status = $request->input('status');
 
-        $demandas = $this->recomendacaoService->listarDemandasCompativeis($profissionalId);
+        if ($idEmpresa !== null) {
+            // Empresa buscando suas proprias demandas
+            $demandas = $this->demandaRepository->findByEmpresa((int) $idEmpresa, $status);
+        } else {
+            // Profissional buscando vagas (Feed/Recomendacao)
+            $profissionalId = auth_id();
+            $demandas = $this->recomendacaoService->listarDemandasCompativeis($profissionalId);
 
-        if (empty($demandas)) {
-            $demandas = $this->demandaRepository->all();
+            if (empty($demandas)) {
+                $demandas = $this->demandaRepository->all();
+            }
         }
 
         Response::json(['data' => $demandas]);

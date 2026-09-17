@@ -14,7 +14,8 @@ use App\Repositories\ProjetoRepository;
 class ProjetoController
 {
     public function __construct(
-        private readonly ProjetoRepository $projetos = new ProjetoRepository()
+        private readonly ProjetoRepository $projetos = new ProjetoRepository(),
+        private readonly \App\Repositories\PortfolioRepository $portfolios = new \App\Repositories\PortfolioRepository()
     ) {
     }
 
@@ -81,8 +82,16 @@ class ProjetoController
 
     private function fromRequest(Request $request): Projeto
     {
+        $idPortfolio = (int) $request->input('id_portfolio');
+        if ($idPortfolio === 0) {
+            $portfolio = $this->portfolios->findByUsuarioId(auth_id());
+            if ($portfolio) {
+                $idPortfolio = (int) $portfolio->id;
+            }
+        }
+
         return new Projeto(
-            idPortfolio: (int) $request->input('id_portfolio'),
+            idPortfolio: $idPortfolio,
             titulo: (string) $request->input('titulo', ''),
             descricao: $request->input('descricao'),
             linksReferencia: (array) $request->input('links_referencia', []),

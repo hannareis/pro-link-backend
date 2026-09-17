@@ -58,7 +58,9 @@ class CartaVirtualController
     public function store(Request $request): void
     {
         $titulo = trim((string) $request->input('titulo', ''));
-        $remetenteEmail = trim((string) $request->input('remetente_email', ''));
+        // O remetente e sempre o proprio usuario autenticado - a SPA nao pede esse campo,
+        // evitando depender de um valor que o cliente teria que preencher manualmente.
+        $remetenteEmail = trim((string) $request->input('remetente_email', auth_user()['email'] ?? ''));
         $destinatarioEmail = trim((string) $request->input('destinatario_email', ''));
 
         if ($titulo === '' || $remetenteEmail === '' || $destinatarioEmail === '') {
@@ -74,7 +76,13 @@ class CartaVirtualController
         try {
             $arquivo = $this->fileUploadService->store($request->file('arquivo'), 'cartas_virtuais');
         } catch (\InvalidArgumentException $e) {
+            // Arquivo em si invalido (tipo/tamanho/erro de upload) - erro do cliente.
             Response::json(['message' => $e->getMessage()], 400);
+            return;
+        } catch (\RuntimeException $e) {
+            // Falha de I/O ao salvar (ex: permissao do diretorio) - erro do servidor,
+            // mas o usuario precisa de feedback em vez de um erro fatal sem resposta JSON.
+            Response::json(['message' => $e->getMessage()], 500);
             return;
         }
 
@@ -113,6 +121,9 @@ class CartaVirtualController
             $arquivo = $this->fileUploadService->store($request->file('arquivo'), 'cartas_virtuais');
         } catch (\InvalidArgumentException $e) {
             Response::json(['message' => $e->getMessage()], 400);
+            return;
+        } catch (\RuntimeException $e) {
+            Response::json(['message' => $e->getMessage()], 500);
             return;
         }
 

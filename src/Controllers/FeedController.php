@@ -19,11 +19,33 @@ class FeedController
     ) {
     }
 
+    // Mapa do filtro "Nivel/Formacao" do widget de filtros do feed para o enum
+    // grau_academico (profissionais/universitarios). "graduando" nao mapeia para um
+    // grau especifico: filtra por estudantes (tipo_conta) em vez de nivel academico.
+    private const GRAU_POR_FILTRO = [
+        'tecnico' => 'TECNOLOGO',
+        'graduado' => 'GRADUACAO',
+        'especialista' => 'POS_GRADUACAO',
+        'mestrado' => 'MESTRADO',
+        'doutorado' => 'DOUTORADO',
+    ];
+
     // Lista publicacoes do feed, priorizando as aderentes ao interesse do usuario.
+    // Aceita os filtros do widget (RF04): area (nome da especialidade), grau
+    // (nivel/formacao) e ordem (cronologia asc/desc).
     public function index(Request $request): void
     {
         $usuarioId = auth_id();
-        $publicacoes = $usuarioId !== 0 ? $this->recomendacaoService->curarFeed($usuarioId) : $this->posts->all();
+        $area = (string) $request->input('area', '') ?: null;
+        $grauFiltro = (string) $request->input('grau', '');
+        $grau = self::GRAU_POR_FILTRO[$grauFiltro] ?? null;
+        $tipoConta = $grauFiltro === 'graduando' ? \App\Models\User::TIPO_CONTA_ESTUDANTE : null;
+        $ordem = (string) $request->input('ordem', 'desc');
+        $busca = (string) $request->input('busca', '') ?: null;
+
+        $publicacoes = $usuarioId !== 0
+            ? $this->recomendacaoService->curarFeed($usuarioId, especialidade: $area, grauAcademico: $grau, ordem: $ordem, tipoConta: $tipoConta, busca: $busca)
+            : $this->posts->all(especialidade: $area, grauAcademico: $grau, ordem: $ordem, tipoConta: $tipoConta, busca: $busca);
 
         Response::json(['data' => $publicacoes]);
     }

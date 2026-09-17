@@ -22,6 +22,40 @@ class ProfissionalController
     ) {
     }
 
+    // Mapa do filtro "Grau Academico" do widget de busca de talentos para o enum
+    // grau_academico (profissionais/universitarios).
+    private const GRAU_POR_FILTRO = [
+        'tecnologo' => 'TECNOLOGO',
+        'graduacao' => 'GRADUACAO',
+        'pos_graduacao' => 'POS_GRADUACAO',
+        'mestrado' => 'MESTRADO',
+        'doutorado' => 'DOUTORADO',
+    ];
+
+    // Busca talentos (profissionais + universitarios) publicamente, com filtros de
+    // nome, area de atuacao, grau academico e status de registro no CREA-AM.
+    public function search(Request $request): void
+    {
+        $nome = (string) $request->input('nome', '') ?: null;
+        $area = (string) $request->input('area', '') ?: null;
+        $grauFiltro = (string) $request->input('grau', '');
+        $grau = self::GRAU_POR_FILTRO[$grauFiltro] ?? null;
+
+        $creaFiltro = (string) $request->input('crea', '');
+        $registroValidado = match ($creaFiltro) {
+            'ativo' => true,
+            'em_andamento' => false,
+            default => null,
+        };
+
+        Response::json(['data' => $this->profissionais->buscarTalentos(
+            nome: $nome,
+            area: $area,
+            grauAcademico: $grau,
+            registroValidado: $registroValidado,
+        )]);
+    }
+
     // Exibe o perfil profissional (proprio ou de outro usuario pelo ?id=).
     public function show(Request $request): void
     {

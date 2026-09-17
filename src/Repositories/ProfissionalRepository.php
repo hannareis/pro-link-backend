@@ -33,6 +33,110 @@ class ProfissionalRepository
         return $row ? $this->hydrate($row) : null;
     }
 
+    // Busca unificada de "talentos" (RF02/RF03): profissionais registrados no CREA-AM
+    // e universitarios, num unico resultado ordenado por nome. Estudantes nao tem
+    // numero_registro_confea_crea (sempre null) nem grau_academico validado pelo CREA -
+    // o filtro "validado" (registro_validado), quando usado, exclui a parte de
+    // universitarios da uniao, pois esse conceito nao existe para eles.
+    public function buscarTalentos(
+        ?string $nome = null,
+        ?string $area = null,
+        ?string $grauAcademico = null,
+        ?bool $registroValidado = null,
+        int $limit = 50
+    ): array {
+        $condicoesProf = ['pr.registro_ativo = 1'];
+        $condicoesUni = [];
+        $params = ['limitProf' => $limit, 'limitUni' => $limit];
+        $incluirEstudantes = $registroValidado === null;
+
+        if ($nome !== null && $nome !== '') {
+            $condicoesProf[] = 'u.nome LIKE :nomeProf';
+            $condicoesUni[] = 'u.nome LIKE :nomeUni';
+            $params['nomeProf'] = $params['nomeUni'] = '%' . $nome . '%';
+        }
+
+        if ($area !== null && $area !== '') {
+            $condicoesProf[] = 'pr.categoria_profissional = :areaProf';
+            $condicoesUni[] = 'uni.curso = :areaUni';
+            $params['areaProf'] = $params['areaUni'] = $area;
+        }
+
+        if ($grauAcademico !== null && $grauAcademico !== '') {
+            $condicoesProf[] = 'pr.grau_academico = :grauProf';
+            $condicoesUni[] = 'uni.grau_academico = :grauUni';
+            $params['grauProf'] = $params['grauUni'] = $grauAcademico;
+        }
+
+        if ($registroValidado !== null) {
+            $condicoesProf[] = 'pr.registro_validado = :validado';
+            $params['validado'] = $registroValidado ? 1 : 0;
+        }
+
+        // Cada SELECT do UNION precisa dos proprios parenteses para poder ter ORDER
+        // BY/LIMIT individuais - sem isso o MySQL rejeita a sintaxe (so aceita um unico
+        // ORDER BY/LIMIT ao final de toda a uniao).
+        $sql = '(SELECT
+                    u.id AS id,
+                    u.nome AS nome,
+                    pr.categoria_profissional AS categoria_profissional,
+                    pr.numero_registro_confea_crea AS numero_registro_confea_crea,
+                    pf.resumo_profissional AS resumo_profissional
+                FROM profissionais pr
+                JOIN usuarios u ON u.id = pr.id_usuario
+                LEFT JOIN portfolio pf ON pf.id_usuario = pr.id_usuario
+                WHERE ' . implode(' AND ', $condicoesProf) . '
+                ORDER BY u.nome
+                LIMIT :limitProf)';
+
+        if ($incluirEstudantes) {
+            $sql .= ' UNION ALL (SELECT
+                    u.id AS id,
+                    u.nome AS nome,
+                    uni.curso AS categoria_profissional,
+                    NULL AS numero_registro_confea_crea,
+                    pf.resumo_profissional AS resumo_profissional
+                FROM universitarios uni
+                JOIN usuarios u ON u.id = uni.id_usuario
+                LEFT JOIN portfolio pf ON pf.id_usuario = uni.id_usuario'
+                . ($condicoesUni !== [] ? ' WHERE ' . implode(' AND ', $condicoesUni) : '') . '
+                ORDER BY u.nome
+                LIMIT :limitUni)';
+        }
+
+        if (!$incluirEstudantes) {
+            // :limitUni so existe no SQL quando o branch de universitarios e incluido -
+            // manter esse valor no array faria bindValue apontar para um placeholder
+            // inexistente.
+            unset($params['limitUni']);
+        }
+
+        $stmt = Database::connection()->prepare($sql);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue(
+                $key,
+                $value,
+                (str_starts_with($key, 'limit') || $key === 'validado') ? \PDO::PARAM_INT : \PDO::PARAM_STR
+            );
+        }
+        $stmt->execute();
+
+        $linhas = $stmt->fetchAll();
+        usort($linhas, fn($a, $b) => strcmp($a['nome'], $b['nome']));
+
+        foreach ($linhas as &$linha) {
+            $linha['id'] = (int) $linha['id'];
+            $linha['competencias'] = $linha['numero_registro_confea_crea'] !== null
+                ? array_map(
+                    fn($c) => ['nome' => $c['nome'], 'nivel' => $c['nivel']],
+                    $this->competenciasDoProfissional($linha['id'])
+                )
+                : [];
+        }
+
+        return $linhas;
+    }
+
     // Lista profissionais ativos, opcionalmente filtrando por categoria.
     public function all(?string $categoria = null): array
     {

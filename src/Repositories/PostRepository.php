@@ -33,13 +33,76 @@ class PostRepository
         return $this->listByAutor($id);
     }
 
-    public function all(int $limit = 50): array
-    {
+    // Lista o feed publico com autor, contagens de curtidas/comentarios e se o usuario
+    // atual ja curtiu cada post (Anexo I, RF04 - card do feed exibe esses dados).
+    // $especialidade filtra por area de atuacao do autor (profissionais.especialidades);
+    // $grauAcademico filtra pelo grau do autor (profissionais ou universitarios);
+    // $ordem controla a ordenacao cronologica ('ASC' ou 'DESC').
+    public function all(
+        int $usuarioAtual = 0,
+        int $limit = 50,
+        ?string $especialidade = null,
+        ?string $grauAcademico = null,
+        string $ordem = 'DESC',
+        ?string $tipoConta = null,
+        ?string $busca = null
+    ): array {
+        $ordem = strtoupper($ordem) === 'ASC' ? 'ASC' : 'DESC';
+
+        $condicoes = ['p.status_post = :status'];
+        $params = [
+            'status' => Post::STATUS_PUBLICO,
+            'statusComentario' => Post::STATUS_PUBLICO,
+            'usuarioAtual' => $usuarioAtual,
+            'limit' => $limit,
+        ];
+
+        if ($tipoConta !== null && $tipoConta !== '') {
+            $condicoes[] = 'u.tipo_conta = :tipoConta';
+            $params['tipoConta'] = $tipoConta;
+        }
+
+        if ($especialidade !== null && $especialidade !== '') {
+            $condicoes[] = 'EXISTS (
+                SELECT 1 FROM profissional_especialidades pe
+                JOIN especialidades esp ON esp.id = pe.id_especialidade
+                WHERE pe.id_profissional = p.id_autor AND esp.nome = :especialidade
+            )';
+            $params['especialidade'] = $especialidade;
+        }
+
+        if ($grauAcademico !== null && $grauAcademico !== '') {
+            $condicoes[] = '(
+                EXISTS (SELECT 1 FROM profissionais pr WHERE pr.id_usuario = p.id_autor AND pr.grau_academico = :grau)
+                OR EXISTS (SELECT 1 FROM universitarios uni WHERE uni.id_usuario = p.id_autor AND uni.grau_academico = :grau)
+            )';
+            $params['grau'] = $grauAcademico;
+        }
+
+        if ($busca !== null && $busca !== '') {
+            $condicoes[] = '(p.titulo LIKE :busca OR p.conteudo LIKE :busca)';
+            $params['busca'] = '%' . $busca . '%';
+        }
+
         $stmt = Database::connection()->prepare(
-            'SELECT * FROM posts WHERE status_post = :status ORDER BY data_postagem DESC, id DESC LIMIT :limit'
+            'SELECT
+                p.*,
+                u.nome AS autor_nome,
+                u.tipo_conta AS autor_tipo_conta,
+                (SELECT COUNT(*) FROM likes_posts lp WHERE lp.id_post = p.id) AS curtidas,
+                (SELECT COUNT(*) FROM comentarios c WHERE c.id_post = p.id AND c.status_comentario = :statusComentario) AS comentarios,
+                EXISTS(
+                    SELECT 1 FROM likes_posts lpm WHERE lpm.id_post = p.id AND lpm.id_usuario = :usuarioAtual
+                ) AS curtido_por_mim
+             FROM posts p
+             JOIN usuarios u ON u.id = p.id_autor
+             WHERE ' . implode(' AND ', $condicoes) . "
+             ORDER BY p.data_postagem {$ordem}, p.id {$ordem}
+             LIMIT :limit"
         );
-        $stmt->bindValue(':status', Post::STATUS_PUBLICO);
-        $stmt->bindValue(':limit', $limit, \PDO::PARAM_INT);
+        foreach ($params as $key => $value) {
+            $stmt->bindValue($key, $value, $key === 'usuarioAtual' || $key === 'limit' ? \PDO::PARAM_INT : \PDO::PARAM_STR);
+        }
         $stmt->execute();
 
         return array_map($this->hydrate(...), $stmt->fetchAll());
@@ -105,6 +168,11 @@ class PostRepository
             conteudo: (string) $row['conteudo'],
             status: (string) $row['status_post'],
             titulo: (string) ($row['titulo'] ?? ''),
+            autorNome: isset($row['autor_nome']) ? (string) $row['autor_nome'] : null,
+            autorTipoConta: isset($row['autor_tipo_conta']) ? (string) $row['autor_tipo_conta'] : null,
+            curtidas: (int) ($row['curtidas'] ?? 0),
+            comentarios: (int) ($row['comentarios'] ?? 0),
+            curtidoPorMim: (bool) ($row['curtido_por_mim'] ?? false),
         );
     }
 }

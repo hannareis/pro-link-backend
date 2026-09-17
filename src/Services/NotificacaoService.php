@@ -42,7 +42,11 @@ class NotificacaoService
             $mail->AltBody = strip_tags($corpo);
 
             return $mail->send();
-        } catch (PHPMailerException) {
+        } catch (PHPMailerException $e) {
+            // Sem isto, uma falha de SMTP (host/credenciais invalidas) e engolida em
+            // silencio - o endpoint de recuperacao de senha sempre responde a mesma
+            // mensagem por seguranca, entao sem log nao ha nenhum sinal do problema.
+            error_log(sprintf('[NotificacaoService] Falha ao enviar e-mail para %s: %s', $destinatario, $mail->ErrorInfo ?: $e->getMessage()));
             return false;
         }
     }

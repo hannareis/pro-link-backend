@@ -55,6 +55,13 @@ class AuthController
         (new View())->render('auth/login');
     }
 
+    // Fornece o token CSRF da sessao atual em JSON, para clientes SPA que nao
+    // renderizam os formularios via View (Anexo I, item 8.5-a).
+    public function csrfToken(Request $request): void
+    {
+        Response::json(['csrf_token' => csrf_token()]);
+    }
+
     // Valida credenciais (Core\Auth) e abre a sessao do usuario.
     public function login(Request $request): void
     {
@@ -89,18 +96,31 @@ class AuthController
         $email = (string) $request->input('email');
         $senha = (string) ($request->input('password') ?? $request->input('senha'));
         $telefone = (string) ($request->input('phone') ?? $request->input('telefone'));
-        $cpf = (string) $request->input('cpf', '');
-        $cnpj = (string) $request->input('cnpj', '');
-        
+
         $profileTypeHtml = (string) $request->input('profile_type');
-        
+
         // Mapeamento do tipo de pessoa baseado no profile_type
         // No banco de dados, o campo é ENUM('FISICA', 'JURIDICA')
         $tipoPessoa = ($profileTypeHtml === 'empresa') ? 'JURIDICA' : 'FISICA';
-        
+
         // Mapeamento do Perfil de Acesso baseado no HTML Select
         // No banco de dados, o campo é ENUM('USUARIO', 'ADMIN_CREA')
         $perfilAcesso = 'USUARIO';
+
+        // Mapeamento do tipo de conta (usuarios.tipo_conta), usado para exibicao no
+        // feed e regras de acesso - antes ficava sempre em COMUM (default do model).
+        $tipoConta = match ($profileTypeHtml) {
+            'profissional' => \App\Models\User::TIPO_CONTA_PROFISSIONAL,
+            'universitario' => \App\Models\User::TIPO_CONTA_ESTUDANTE,
+            'empresa' => \App\Models\User::TIPO_CONTA_EMPRESA,
+            default => \App\Models\User::TIPO_CONTA_COMUM,
+        };
+
+        // O formulario de cadastro tem um unico campo "document_number" para CPF/CNPJ,
+        // reaproveitado conforme o tipo de pessoa (cadastreSe.html troca o label/placeholder).
+        $documentNumber = (string) $request->input('document_number', '');
+        $cpf = $tipoPessoa === 'FISICA' ? $documentNumber : '';
+        $cnpj = $tipoPessoa === 'JURIDICA' ? $documentNumber : '';
 
         if (empty($nome) || empty($email) || empty($senha)) {
             Response::json(['message' => 'Nome, e-mail e senha são obrigatórios.'], 400);
@@ -132,6 +152,7 @@ class AuthController
             telefone: $telefone,
             tipoPessoa: $tipoPessoa,
             perfilAcesso: $perfilAcesso,
+            tipoConta: $tipoConta,
             contaAtiva: true,
             ultimoLoginEm: null,
             tentativasLogin: 0,
@@ -160,6 +181,11 @@ class AuthController
             $pdo->rollBack();
             Response::json(['message' => $e->getMessage()], 400);
             return;
+        } catch (\RuntimeException $e) {
+            // Ex: falha de I/O ao salvar o comprovante de matricula (FileUploadService).
+            $pdo->rollBack();
+            Response::json(['message' => $e->getMessage()], 500);
+            return;
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
@@ -180,6 +206,9 @@ class AuthController
         } catch (\InvalidArgumentException $e) {
             Response::json(['message' => $e->getMessage()], 400);
             return;
+        } catch (\RuntimeException $e) {
+            Response::json(['message' => $e->getMessage()], 500);
+            return;
         }
 
         Response::json(['message' => 'Perfil atualizado com sucesso'], 201);
@@ -199,7 +228,7 @@ class AuthController
     {
         $userProfissional = new \App\Models\Profissional(
             idUsuario: $userId,
-            numeroRegistroConfeaCrea: (string) $request->input('crea-record', ''),
+            numeroRegistroConfeaCrea: (string) $request->input('numero_registro_confea_crea', ''),
             categoriaProfissional: (string) $request->input('categoria_profissional', ''),
             anosExperiencia: (int) $request->input('anos_experiencia') ?: null,
             grauAcademico: (string) $request->input('grau_academico'),
@@ -209,8 +238,6 @@ class AuthController
 
     private function createUniversitarioPerfil(int $userId, Request $request): void
     {
-        $universidade = (string) $request->input('institution_ensino');
-
         //valida o formato da data recebida
         $dataRecebida = (string) $request->input('previsao_formatura');
         $data = DateTime::createFromFormat('Y-m-d', $dataRecebida);
@@ -219,12 +246,13 @@ class AuthController
 
         $userUniversitario = new \App\Models\Universitario(
             idUsuario: $userId,
-            universidadeId: $this->universidadeRepository->findByNome($universidade)?->id ?? $this->universidadeRepository->findBySigla($universidade)?->id ?? 0,
-            curso: (string) $request->input('student_modality', ''),
-            matricula: (string) $request->input('student_ra') ?: null,
+            universidadeId: (int) $request->input('universidade_id', 0),
+            curso: (string) $request->input('curso', ''),
+            grau_academico: (string) $request->input('student_level', 'GRADUACAO'),
+            matricula: (string) $request->input('matricula') ?: null,
             semestreAtual: (int) $request->input('semestre_atual') ?: null,
             previsaoFormatura: $valida ? $dataRecebida : null,
-            comprovanteMatricula: $this->storeComprovanteMatricula($request->file('file_comprovante')),
+            comprovanteMatricula: $this->storeComprovanteMatricula($request->file('comprovante_matricula')),
         );
         $this->universitarioRepository->save($userUniversitario);
     }
@@ -245,8 +273,8 @@ class AuthController
     {
         $userEmpresa = new \App\Models\PessoaJuridica(
             idUsuario: $userId,
-            cnpj: (string) $request->input('cnpj', ''),
-            razaoSocial: (string) $request->input('razao_social', ''),
+            cnpj: (string) $request->input('document_number', ''),
+            razaoSocial: (string) $request->input('name', ''),
             nomeFantasia: (string) $request->input('nome_fantasia') ?: null,
         );
         $this->pessoaJuridicaRepository->save($userEmpresa);

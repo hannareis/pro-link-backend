@@ -30,7 +30,7 @@ class PostController
             userId: $userId,
             conteudo: (string) $request->input('conteudo', ''),
             titulo: (string) $request->input('titulo', ''),
-            status: (string) $request->input('status', ''),
+            status: (string) $request->input('status', Post::STATUS_PUBLICO),
         );
 
         $id = $this->postRepository->save($post);
@@ -92,7 +92,7 @@ class PostController
     public function likePost(Request $request): void
     {
         $userId = auth_id();
-        $postId = (int) $request->input('id_post');
+        $postId = (int) $request->input('id');
 
         $curtida = $this->curtidaPostRepository->findByUsuarioEPost($userId, $postId);
 

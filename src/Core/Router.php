@@ -24,13 +24,43 @@ class Router
     // Guarda o handler (Controller + acao) e a lista de middlewares da rota.
     private function add(string $method, string $path, array $handler, array $middlewares): void
     {
-        $this->routes[$method][$path] = compact('handler', 'middlewares');
+        $this->routes[$method][] = compact('path', 'handler', 'middlewares');
+    }
+
+    // Testa se $path corresponde ao padrao da rota (ex: "/posts/{id}/like"), convertendo
+    // os segmentos "{nome}" em grupos nomeados de regex. Preenche $params por referencia.
+    private function matches(string $pattern, string $path, array &$params): bool
+    {
+        $regex = preg_replace('#\{([a-zA-Z_][a-zA-Z0-9_]*)\}#', '(?P<$1>[^/]+)', $pattern);
+
+        if (!preg_match('#^' . $regex . '$#', $path, $matches)) {
+            return false;
+        }
+
+        $params = array_filter($matches, fn($key) => !is_int($key), ARRAY_FILTER_USE_KEY);
+        return true;
     }
 
     // Resolve a rota da requisicao atual e executa middlewares + Controller na ordem correta.
+    // Duas passagens: primeiro rotas literais (sem "{}"), depois rotas dinamicas - assim
+    // "/perfil/privacidade" nunca e capturada por "/perfil/{id}" registrada antes dela.
     public function dispatch(string $method, string $path): void
     {
-        $route = $this->routes[$method][$path] ?? null;
+        $candidatas = $this->routes[$method] ?? [];
+        $params = [];
+        $route = null;
+
+        foreach ([false, true] as $dinamica) {
+            foreach ($candidatas as $candidata) {
+                if (str_contains($candidata['path'], '{') !== $dinamica) {
+                    continue;
+                }
+                if ($this->matches($candidata['path'], $path, $params)) {
+                    $route = $candidata;
+                    break 2;
+                }
+            }
+        }
 
         // Nenhuma rota corresponde: responde 404 com a view de erro.
         if ($route === null) {
@@ -39,7 +69,7 @@ class Router
             return;
         }
 
-        $request = new Request();
+        $request = new Request($params);
 
         // Pipeline de middlewares (ex: sanitizacao -> CSRF -> autenticacao -> perfil).
         // Cada item pode ser um class-string (instanciado sem argumentos) ou uma

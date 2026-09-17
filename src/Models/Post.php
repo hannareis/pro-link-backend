@@ -8,7 +8,7 @@ namespace App\Models;
 class Post extends Publicavel
 {
     public function __construct(
-        ?int $id = null, int $userId = 0, ?string $dataDePostagem = null, ?string $dataEdicao = null, string $conteudo = "", string $status = self::STATUS_PUBLICO,
+        ?int $id = null, int $userId = 0, ?string $dataDePostagem = null, ?string $dataEdicao = null, string $conteudo = '', string $status = Publicavel::STATUS_PUBLICO,
         public string $titulo = "",
         // URL absoluta da primeira midia anexada ao post (ver PostAnexoController /
         // AnexoRepository), agregada por PostRepository::all()/findByUserId().

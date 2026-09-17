@@ -13,11 +13,11 @@ error_reporting(E_ALL);
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 // Configuração de CORS (Cross-Origin Resource Sharing) para SPA
-// $origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
-// header("Access-Control-Allow-Origin: $origin");
-// header("Access-Control-Allow-Credentials: true");
-// header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-// header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+$origin = $_SERVER['HTTP_ORIGIN'] ?? '*';
+header("Access-Control-Allow-Origin: $origin");
+header("Access-Control-Allow-Credentials: true");
+header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
 
 // Trata requisições preflight (OPTIONS) do navegador
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {

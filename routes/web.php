@@ -56,6 +56,7 @@ $router->post('/perfil/me', [UserController::class, 'update'], [AuthMiddleware::
 $router->post('/perfil/universitario/me', [UniversitarioController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/perfil/profissional/me', [ProfissionalController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 // $router->post('/perfil/empresa', [PessoaJuridicaController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/perfil', [UserController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/perfil/remover', [UserController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 $router->get('/perfil/privacidade', [UserController::class, 'privacySettings'], [AuthMiddleware::class]);
 $router->post('/perfil/privacidade', [UserController::class, 'updatePrivacySettings'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);

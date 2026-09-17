@@ -148,7 +148,6 @@ class AuthController
         try {
             $userId = $this->userRepository->save($user);
 
-
             if ($tipoPessoa === 'FISICA') {
                 $this->pessoaFisicaRepository->save(new PessoaFisica(
                     idUsuario: $userId,

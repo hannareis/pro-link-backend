@@ -82,10 +82,13 @@ $router->post('/posts/{id}/anexos', [PostAnexoController::class, 'store'], [Sani
 $router->post('/posts/{id}/like', [PostController::class, 'likePost'], [AuthMiddleware::class]);
 
 // RF06 - painel administrativo, restrito ao perfil admin via RoleMiddleware.
-$router->get('/admin', [AdminController::class, 'dashboard'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN])]);
+$router->get('/admin/dashboard', [AdminController::class, 'dashboard'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN])]);
+$router->post('/admin/register', [AdminController::class, 'registerAdmin'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->get('/admin/usuarios', [AdminController::class, 'manageUsers'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->post('/admin/usuarios/status', [AdminController::class, 'toggleUserStatus'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/admin/universitarios/aprovar', [AdminController::class, 'approveUniversitario'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->get('/admin/moderacao', [AdminController::class, 'moderation'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
+$router->post('/admin/denuncias/moderar', [AdminController::class, 'moderateDenuncia'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA]), SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->get('/admin/auditoria', [AdminController::class, 'auditLogs'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 $router->get('/admin/dados-publicos', [AdminController::class, 'dadosPublicos'], [AuthMiddleware::class, new RoleMiddleware([User::PERFIL_ADMIN_CREA])]);
 

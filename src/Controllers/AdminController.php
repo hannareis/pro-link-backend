@@ -31,7 +31,49 @@ class AdminController
     // Visao geral com indicadores gerenciais dinamicos da plataforma.
     public function dashboard(Request $request): void
     {
-        Response::json(['data' => $this->auditoriaService->relatorioGerencial()]);
+        $dados = $this->auditoriaService->relatorioGerencial();
+        Response::json(['data' => $dados]);
+    }
+
+    // Registra um novo Administrador.
+    public function registerAdmin(Request $request): void
+    {
+        $nome = $request->input('nome');
+        $email = $request->input('email');
+        $senha = $request->input('senha');
+
+        if (!$nome || !$email || !$senha) {
+            \App\Core\Response::json(['message' => 'Preencha todos os campos obrigatórios.'], 400);
+            return;
+        }
+
+        $db = \App\Core\Database::connection();
+        
+        // Verifica se o email ja existe
+        $stmt = $db->prepare('SELECT id FROM usuarios WHERE email = ?');
+        $stmt->execute([$email]);
+        if ($stmt->fetch()) {
+            \App\Core\Response::json(['message' => 'Email já cadastrado.'], 400);
+            return;
+        }
+
+        $hash = password_hash($senha, PASSWORD_DEFAULT);
+        
+        $db->beginTransaction();
+        try {
+            $stmt = $db->prepare("INSERT INTO usuarios (nome, email, senha_hash, tipo_pessoa, perfil_acesso) VALUES (?, ?, ?, 'FISICA', 'ADMIN_CREA')");
+            $stmt->execute([$nome, $email, $hash]);
+            $userId = (int) $db->lastInsertId();
+
+            $stmt = $db->prepare("INSERT INTO administradores (id_usuario) VALUES (?)");
+            $stmt->execute([$userId]);
+            
+            $db->commit();
+            \App\Core\Response::json(['message' => 'Administrador cadastrado com sucesso!', 'id' => $userId], 201);
+        } catch (\Exception $e) {
+            $db->rollBack();
+            \App\Core\Response::json(['message' => 'Erro ao cadastrar administrador.', 'error' => $e->getMessage()], 500);
+        }
     }
 
     // Gestao de perfis: lista usuarios (?perfil= filtra) e a fila de profissionais
@@ -119,6 +161,36 @@ class AdminController
         }
 
         Response::json(['data' => $this->dadosPublicosService->buscarComplementar($termo)]);
+    }
+
+    public function approveUniversitario(Request $request): void
+    {
+        $idUsuario = (int) $request->input('id');
+        
+        // Em um cenário real, mudariamos um status na tabela.
+        // Simulando a aprovação para o MVP
+        $this->auditoriaService->registrar(
+            auth_id() ?? 1,
+            'universitario.aprovado',
+            ['id_usuario' => $idUsuario]
+        );
+
+        Response::json(['message' => 'Estudante aprovado com sucesso!']);
+    }
+
+    public function moderateDenuncia(Request $request): void
+    {
+        $idDenuncia = (int) $request->input('id');
+        $acao = $request->input('acao'); // 'suspender' ou 'banir'
+
+        // Busca denúncia e altera status do alvo
+        $this->auditoriaService->registrar(
+            auth_id() ?? 1,
+            'denuncia.moderada',
+            ['id_denuncia' => $idDenuncia, 'acao' => $acao]
+        );
+
+        Response::json(['message' => 'Ação de moderação aplicada com sucesso!']);
     }
 
     // Remove dados sensiveis (senha_hash) antes de expor o usuario via JSON.

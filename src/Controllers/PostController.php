@@ -64,13 +64,6 @@ class PostController
         Response::json(['data' => $post]);
     }
 
-    public function index(Request $request): void
-    {
-        $userId = auth_id();
-
-        Response::json(['data' => $this->postRepository->listByAutor($userId)]);
-    }
-
     // [IA]: Padronização do método para update, validação de autor (403), registro (404) e resposta em JSON.
     public function update(Request $request): void
     {

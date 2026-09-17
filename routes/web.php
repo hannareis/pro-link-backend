@@ -77,8 +77,10 @@ $router->post('/demandas/{id}/editar', [DemandaController::class, 'update'], [Au
 $router->post('/demandas/{id}/remover', [DemandaController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 
 // RF05 - comunicação inicial entre empresas, instituições e profissionais através da criação de posts.
+$router->get('/posts', [PostController::class, 'index']);
 $router->post('/posts', [PostController::class, 'store'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/edit', [PostController::class, 'update'], [AuthMiddleware::class, SanitizeInputMiddleware::class, CsrfMiddleware::class]);
+$router->post('/posts/{id}/remover', [PostController::class, 'destroy'], [AuthMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/{id}/anexos', [PostAnexoController::class, 'store'], [SanitizeInputMiddleware::class, CsrfMiddleware::class]);
 $router->post('/posts/{id}/like', [PostController::class, 'likePost'], [AuthMiddleware::class]);
 

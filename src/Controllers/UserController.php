@@ -20,6 +20,7 @@ class UserController
     public function __construct(
         private readonly UserRepository $users = new UserRepository(),
         private readonly PessoaFisicaRepository $pessoasFisicas = new PessoaFisicaRepository(),
+        private readonly \App\Repositories\PessoaJuridicaRepository $pessoasJuridicas = new \App\Repositories\PessoaJuridicaRepository(),
         private readonly CreaApiService $creaApiService = new CreaApiService()
     ) {
     }
@@ -106,6 +107,18 @@ class UserController
 
         $this->users->save($user);
 
+        // Se for Empresa, atualiza os dados especificos
+        if ($user->tipoPessoa === User::TIPO_PESSOA_JURIDICA) {
+            $pj = $this->pessoasJuridicas->findByUsuarioId($user->id);
+            if ($pj !== null) {
+                $pj->razaoSocial = trim((string) $request->input('razao_social', $pj->razaoSocial));
+                $pj->nomeFantasia = trim((string) $request->input('nome_fantasia', $pj->nomeFantasia ?? ''));
+                // CNPJ geralmente nao se altera, mas se precisar:
+                // $pj->cnpj = trim((string) $request->input('cnpj', $pj->cnpj));
+                $this->pessoasJuridicas->save($pj);
+            }
+        }
+
         Response::json(['message' => 'Dados atualizados com sucesso.', 'data' => $this->toPublicArray($user)]);
     }
 
@@ -137,19 +150,12 @@ class UserController
 
         $user = $this->users->findById($id);
 
-        if ($user === null) {
-            Response::json(['message' => 'Usuário não encontrado.'], 404);
+        if ($user === null || $user->tipoPessoa === User::TIPO_PESSOA_JURIDICA) {
+            Response::json(['message' => 'Preferência de visibilidade indisponível para este perfil.'], 404);
             return;
         }
 
-        $pessoaFisica = $this->pessoasFisicas->findByUsuarioId($id);
-
-        Response::json([
-            'tipo_pessoa' => $user->tipoPessoa,
-            // Apenas pessoa fisica possui a preferencia de visibilidade publica do perfil;
-            // conta JURIDICA e sempre publica.
-            'visibilidade_publica' => $pessoaFisica?->visibilidadePublica ?? true,
-        ]);
+        Response::json(['visibilidade_publica' => $this->ehVisivelPublicamente($user)]);
     }
 
     // Atualiza a preferencia de visibilidade publica do perfil (consentimento LGPD).
@@ -162,6 +168,7 @@ class UserController
             return;
         }
 
+        $user = $this->users->findById($id);
         $pessoaFisica = $this->pessoasFisicas->findByUsuarioId($id);
 
         if ($pessoaFisica === null) {
@@ -191,7 +198,7 @@ class UserController
     // Remove dados sensiveis (senha_hash) antes de expor o usuario via JSON.
     private function toPublicArray(User $user): array
     {
-        return [
+        $data = [
             'id' => $user->id,
             'nome' => $user->nome,
             'email' => $user->email,
@@ -202,5 +209,16 @@ class UserController
             'conta_ativa' => $user->contaAtiva,
             'criado_em' => $user->criadoEm,
         ];
+
+        if ($user->tipoPessoa === User::TIPO_PESSOA_JURIDICA) {
+            $pj = $this->pessoasJuridicas->findByUsuarioId($user->id);
+            if ($pj !== null) {
+                $data['razao_social'] = $pj->razaoSocial;
+                $data['nome_fantasia'] = $pj->nomeFantasia;
+                $data['cnpj'] = $pj->cnpj;
+            }
+        }
+
+        return $data;
     }
 }

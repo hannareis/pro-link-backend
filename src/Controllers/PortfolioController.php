@@ -83,6 +83,7 @@ class PortfolioController
             ],
             'competencias' => $this->profissionais->competenciasDoProfissional($idUsuario) ?: [],
             'experiencias' => $this->experiencias->listByPortfolio((int) $portfolio->id),
+            'projetos' => $this->projetos->listByPortfolio((int) $portfolio->id),
             'acervo_tecnico' => [
                 'arts_aprovadas' => $this->arts->listByPortfolio((int) $portfolio->id),
                 'cats_validas' => $this->cats->listByPortfolio((int) $portfolio->id),

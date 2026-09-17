@@ -20,6 +20,42 @@ class DemandaRepository
         return $row ? $this->hydrate($row) : null;
     }
 
+    public function findByEmpresa(int $empresaId, ?string $status = null): array
+    {
+        $pdo = Database::connection();
+        
+        $sql = 'SELECT d.*, 
+                (SELECT COUNT(*) FROM interesses i WHERE i.id_demanda = d.id AND i.status != \'CANCELADA\') as total_candidatos
+                FROM demandas d 
+                WHERE d.id_empresa = :id_empresa';
+                
+        $params = ['id_empresa' => $empresaId];
+
+        if ($status !== null) {
+            $sql .= ' AND d.status = :status';
+            $params['status'] = $status;
+        }
+
+        $sql .= ' ORDER BY d.data_publicacao DESC';
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll();
+
+        // Mapeia e preenche a propriedade total_candidatos extra dinamicamente, se a model permitir.
+        // Como o hydrate retorna a Demanda, vamos precisar injetar o total_candidatos caso seja necessario no JSON.
+        // Uma forma eh usar array_map com stdClass ou arrays se o front precisar muito,
+        // Mas podemos adicionar uma propriedade publica virtual na classe Demanda.
+        $demandas = array_map($this->hydrate(...), $rows);
+        
+        // Atribui o total_candidatos no objeto
+        foreach ($demandas as $index => $demanda) {
+            $demanda->total_candidatos = (int) $rows[$index]['total_candidatos'];
+        }
+
+        return $demandas;
+    }
+
     // Lista todas as demandas ativas.
     public function all(): array
     {

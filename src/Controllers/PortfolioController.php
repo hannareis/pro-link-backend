@@ -6,11 +6,13 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Core\Response;
+use App\Models\PessoaJuridica;
 use App\Models\Portfolio;
 use App\Repositories\ArtRepository;
 use App\Repositories\CatRepository;
 use App\Repositories\ExperienciaRepository;
 use App\Repositories\PessoaFisicaRepository;
+use App\Repositories\PessoaJuridicaRepository;
 use App\Repositories\PortfolioRepository;
 use App\Repositories\ProfissionalRepository;
 use App\Repositories\ProjetoRepository;
@@ -23,6 +25,7 @@ class PortfolioController
     public function __construct(
         private readonly PortfolioRepository $portfolios = new PortfolioRepository(),
         private readonly PessoaFisicaRepository $pessoasFisicas = new PessoaFisicaRepository(),
+        private readonly PessoaJuridicaRepository $empresas = new PessoaJuridicaRepository(),
         private readonly ProfissionalRepository $profissionais = new ProfissionalRepository(),
         private readonly ProjetoRepository $projetos = new ProjetoRepository(),
         private readonly UserRepository $usuarios = new UserRepository(),
@@ -43,22 +46,33 @@ class PortfolioController
         $user = $this->usuarios->findById($userId);
 
         if ($portfolio === null) {
-            Response::json(['message' => 'Portfolio não encontrado.' . $request->user()['id']], 404);
+            Response::json(['message' => 'Portfolio nao encontrado.'], 404);
             return;
         }
 
         $idUsuario = $portfolio->idUsuario;
-        $profissional = $this->profissionais->findByUsuarioId($idUsuario) ?: null;
+        $profissional = $this->profissionais->findByUsuarioId($idUsuario);
+        $pf = $this->pessoasFisicas->findByUsuarioId($idUsuario);
+        $empresa = $this->empresas->findByUsuarioId($idUsuario);
 
         Response::json([
             'usuario' => [
                 'nome' => $user->nome,
-                'email' => $user->email
+                'telefone' => $user->telefone,
+                'cpf' => $pf?->cpf,
+                'email' => $user->email,
+                'cidade' => $user->cidade,
+                'estado' => $user->estado
             ],
             'profissional' => [
-                'categoria_profissional' => ($profissional !== null) ? $profissional->categoriaProfissional : '',
-                'registro_validado' => ($profissional !== null) ? $profissional->registroValidado : false,
-                'numero_registro_confrea_crea' => ($profissional !== null) ? $profissional->numeroRegistroConfeaCrea : '',
+                'categoria_profissional' => $profissional?->categoriaProfissional,
+                'registro_validado' => $profissional?->registroValidado,
+                'numero_registro_confrea_crea' => $profissional?->numeroRegistroConfeaCrea,
+            ],
+            'empresa' => [
+                'cnpj' => $empresa?->cnpj,
+                'razao_social' => $empresa?->razaoSocial,
+                'nome_fantasia' => $empresa?->nomeFantasia ?? null
             ],
             'portfolio' => [
                 'links_contato' => [
@@ -97,9 +111,9 @@ class PortfolioController
         $portfolio = new Portfolio(
             id: $existente?->id,
             idUsuario: $usuarioId,
-            resumoProfissional: $request->input('resumo_profissional'),
-            documentoIdentificacao: $request->input('documento_identificacao'),
-            linksContato: (array) $request->input('links_contato', []),
+            resumoProfissional: $request->input('resumo_profissional', $existente?->resumoProfissional),
+            documentoIdentificacao: $request->input('documento_identificacao', $existente?->documentoIdentificacao),
+            linksContato: (array) $request->input('links_contato', $existente?->linksContato ?? []),
         );
 
         $id = $this->portfolios->save($portfolio);

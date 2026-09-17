@@ -71,9 +71,9 @@ class UserRepository
         if ($user->id === null) {
             $stmt = $pdo->prepare(
                 'INSERT INTO usuarios
-                    (tipo_pessoa, perfil_acesso, tipo_conta, nome, senha_hash, telefone, email, conta_ativa)
+                    (tipo_pessoa, perfil_acesso, tipo_conta, nome, senha_hash, telefone, estado, cidade, email, conta_ativa)
                  VALUES
-                    (:tipo_pessoa, :perfil_acesso, :tipo_conta, :nome, :senha_hash, :telefone, :email, :conta_ativa)'
+                    (:tipo_pessoa, :perfil_acesso, :tipo_conta, :nome, :senha_hash, :telefone, :estado, :cidade, :email, :conta_ativa)'
             );
             $stmt->execute([
                 'tipo_pessoa' => $user->tipoPessoa,
@@ -82,6 +82,8 @@ class UserRepository
                 'nome' => $user->nome,
                 'senha_hash' => $user->senhaHash,
                 'telefone' => $user->telefone,
+                'estado' => $user->estado,
+                'cidade' => $user->cidade,
                 'email' => $user->email,
                 'conta_ativa' => $user->contaAtiva ? 1 : 0,
             ]);
@@ -97,6 +99,8 @@ class UserRepository
                 nome = :nome,
                 senha_hash = :senha_hash,
                 telefone = :telefone,
+                estado = :estado,
+                cidade = :cidade,
                 email = :email,
                 conta_ativa = :conta_ativa
              WHERE id = :id'
@@ -108,6 +112,8 @@ class UserRepository
             'nome' => $user->nome,
             'senha_hash' => $user->senhaHash,
             'telefone' => $user->telefone,
+            'estado' => $user->estado,
+            'cidade' => $user->cidade,
             'email' => $user->email,
             'conta_ativa' => $user->contaAtiva ? 1 : 0,
             'id' => $user->id,
@@ -163,6 +169,8 @@ class UserRepository
             email: (string) $row['email'],
             senhaHash: (string) $row['senha_hash'],
             telefone: (string) $row['telefone'],
+            estado: (string) $row['estado'],
+            cidade: (string) $row['cidade'],
             tipoPessoa: (string) $row['tipo_pessoa'],
             perfilAcesso: (string) $row['perfil_acesso'],
             tipoConta: (string) $row['tipo_conta'],

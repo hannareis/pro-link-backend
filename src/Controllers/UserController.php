@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Repositories\PessoaFisicaRepository;
 use App\Repositories\UserRepository;
 use App\Services\CreaApiService;
+use App\Services\UserService;
 
 // RF01 - gestao de dados cadastrais e privacidade do usuario.
 class UserController
@@ -95,6 +96,8 @@ class UserController
 
         $user->nome = trim((string) $request->input('nome', $user->nome));
         $user->telefone = trim((string) $request->input('telefone', $user->telefone));
+        $user->cidade = trim((string) $request->input('cidade', $user->cidade));
+        $user->estado = trim((string) $request->input('estado', $user->estado));
 
         $novaSenha = (string) $request->input('password', '');
         if ($novaSenha !== '') {

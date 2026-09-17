@@ -201,7 +201,7 @@ class AuthController
     {
         $userProfissional = new \App\Models\Profissional(
             idUsuario: $userId,
-            numeroRegistroConfeaCrea: (string) $request->input('crea-record', ''),
+            numeroRegistroConfeaCrea: (string) $request->input('numero_registro_confea_crea', ''),
             categoriaProfissional: (string) $request->input('categoria_profissional', ''),
             anosExperiencia: (int) $request->input('anos_experiencia') ?: null,
             grauAcademico: (string) $request->input('grau_academico'),

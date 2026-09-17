@@ -41,6 +41,10 @@ CREATE TABLE usuarios (
 
     telefone VARCHAR(25) NOT NULL,
 
+    estado VARCHAR(25) NOT NULL,
+
+    cidade VARCHAR(25) NOT NULL,
+
     email VARCHAR(254) NOT NULL UNIQUE,
 
     conta_ativa BOOLEAN NOT NULL DEFAULT TRUE,

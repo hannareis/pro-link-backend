@@ -50,18 +50,7 @@ class ProfissionalController
             return;
         }
 
-        $this->profissionais->save(new Profissional(
-            idUsuario: $usuarioId,
-            numeroRegistroConfeaCrea: (string) $request->input('numero_registro_confea_crea', ''),
-            categoriaProfissional: (string) $request->input('categoria_profissional', ''),
-            anosExperiencia: $request->input('anos_experiencia') !== null
-                ? (int) $request->input('anos_experiencia')
-                : null,
-            empresaAtualId: $request->input('empresa_atual_id') !== null
-                ? (int) $request->input('empresa_atual_id')
-                : null,
-            grauAcademico: (string) $request->input('grau_academico', Profissional::GRAU_GRADUACAO),
-        ));
+        $this->profissionais->save($this->fromRequest($request, $usuarioId));
 
         Response::json(['message' => 'Perfil profissional salvo.', 'id' => $usuarioId], 201);
     }
@@ -129,5 +118,39 @@ class ProfissionalController
         $this->profissionais->marcarValidado($usuarioId);
 
         Response::json(['message' => 'Registro validado pelo CREA.', 'crea' => $resposta['body']]);
+    }
+
+    public function update(Request $request): void
+    {
+        
+        $usuarioId = auth_id();
+
+        if ($this->profissionais->findByUsuarioId($usuarioId) === null) {
+            Response::json(['message' => 'Usuario nao encontrado.'], 404);
+            return;
+        }
+
+        
+        $user = $this->fromRequest($request, $usuarioId);
+        $user->idUsuario = $usuarioId;
+        $this->profissionais->save($user);
+
+        Response::json(['message' => 'Dados do profissional atualizados.']);
+    }
+
+    public function fromRequest(Request $request, int $usuarioId): Profissional
+    {
+        return new Profissional(
+            idUsuario: $usuarioId,
+            numeroRegistroConfeaCrea: (string) $request->input('registro', ''),
+            categoriaProfissional: (string) $request->input('titulo_profissional', ''),
+            anosExperiencia: $request->input('anos_experiencia') !== null
+                ? (int) $request->input('anos_experiencia')
+                : null,
+            empresaAtualId: $request->input('empresa_atual_id') !== null
+                ? (int) $request->input('empresa_atual_id')
+                : null,
+            grauAcademico: (string) $request->input('grau_academico', Profissional::GRAU_GRADUACAO),
+        );
     }
 }
